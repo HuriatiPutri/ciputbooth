@@ -28,25 +28,42 @@ async function startBackendServer() {
 }
 
 function waitForServer(port, callback) {
-  const client = new net.Socket();
   let retries = 0;
+  let hasConnected = false;
 
   const tryConnect = () => {
+    if (hasConnected) return;
+
+    const client = new net.Socket();
+    client.setTimeout(1000);
+
     client.connect({ port, host: '127.0.0.1' }, () => {
+      if (!hasConnected) {
+        hasConnected = true;
+        client.destroy();
+        console.log('Backend server is ready!');
+        callback();
+      }
+    });
+
+    client.on('error', () => {
       client.destroy();
-      console.log('Backend server is ready!');
-      callback();
+      retries++;
+      if (retries > 30) {
+        console.error('Failed to connect to backend server after 30 seconds');
+        if (!hasConnected) {
+          hasConnected = true;
+          callback();
+        }
+        return;
+      }
+      setTimeout(tryConnect, 1000);
+    });
+
+    client.on('timeout', () => {
+      client.destroy();
     });
   };
-
-  client.on('error', () => {
-    retries++;
-    if (retries > 30) {
-      console.error('Failed to connect to backend server after 30 seconds');
-      return;
-    }
-    setTimeout(tryConnect, 1000);
-  });
 
   tryConnect();
 }
@@ -68,7 +85,18 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, the backend serves the built Vite app
-    mainWindow.loadURL(`https://localhost:${SERVER_PORT}`);
+    const prodUrl = `https://localhost:${SERVER_PORT}`;
+    mainWindow.loadURL(prodUrl);
+
+    // If initial load failed because server took a moment longer to accept TLS connections, retry
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.warn(`Failed to load ${prodUrl} (${errorCode}: ${errorDescription}), retrying in 1s...`);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadURL(prodUrl);
+        }
+      }, 1000);
+    });
   }
 }
 

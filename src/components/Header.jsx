@@ -70,60 +70,60 @@ export default function Header() {
 
   return (
     <>
-      <header className="w-full z-40 px-8 py-4 flex items-center justify-between flex-shrink-0 bg-slate-950/80 backdrop-blur-md border-b border-white/10">
+      <header className="w-full z-40 px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between flex-shrink-0 bg-slate-950/80 backdrop-blur-md border-b border-white/10">
         {/* Studio Branding */}
-        <div className="flex items-center gap-4 bg-slate-900/90 backdrop-blur-lg px-8 py-4 rounded-full border border-white/15 shadow-2xl">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-600 to-pink-500 flex items-center justify-center text-white shadow-md">
-            <Camera className="w-5 h-5" />
+        <div className="flex items-center gap-2.5 sm:gap-3.5 bg-slate-900/90 backdrop-blur-lg px-4 sm:px-6 py-1.5 sm:py-2.5 rounded-full border border-white/15 shadow-xl">
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-violet-600 to-pink-500 flex items-center justify-center text-white shadow-md flex-shrink-0">
+            <Camera className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
           </div>
           <div>
-            <h1 className="font-display font-black tracking-wide text-base sm:text-lg bg-gradient-to-r from-violet-400 via-pink-300 to-amber-200 bg-clip-text text-transparent uppercase">
+            <h1 className="font-display font-black tracking-wide text-xs sm:text-base bg-gradient-to-r from-violet-400 via-pink-300 to-amber-200 bg-clip-text text-transparent uppercase truncate max-w-[140px] sm:max-w-none">
               {settings?.studioName || 'CIPUTBOOTH'}
             </h1>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Mock Camera Toggle */}
           {step === 'booth_capture' && (
             <Button
               variant={isMockCamera ? 'primary' : 'secondary'}
-              size="md"
+              size="sm"
               leftIcon={Video}
               onClick={() => setIsMockCamera(!isMockCamera)}
-              className="rounded-full"
+              className="rounded-full text-xs py-1.5 px-3 sm:px-4 hidden xs:inline-flex"
             >
-              {isMockCamera ? 'Simulated Cam' : 'Live Cam'}
+              {isMockCamera ? 'Sim Cam' : 'Live Cam'}
             </Button>
           )}
 
           {/* Fullscreen Toggle Button */}
           <button
             onClick={toggleFullscreen}
-            className="p-4 rounded-full bg-slate-900/90 backdrop-blur-lg border border-white/15 text-slate-300 hover:text-white hover:bg-slate-800 transition shadow-lg cursor-pointer"
+            className="p-2 sm:p-2.5 rounded-full bg-slate-900/90 backdrop-blur-lg border border-white/15 text-slate-300 hover:text-white hover:bg-slate-800 transition shadow-lg cursor-pointer"
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           >
-            {isFullscreen ? <Minimize className="w-5 h-5 text-indigo-400" /> : <Maximize className="w-5 h-5 text-indigo-400" />}
+            {isFullscreen ? <Minimize className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" /> : <Maximize className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />}
           </button>
 
           {/* Audio Volume Button */}
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-4 rounded-full bg-slate-900/90 backdrop-blur-lg border border-white/15 text-slate-300 hover:text-white hover:bg-slate-800 transition shadow-lg cursor-pointer"
+            className="p-2 sm:p-2.5 rounded-full bg-slate-900/90 backdrop-blur-lg border border-white/15 text-slate-300 hover:text-white hover:bg-slate-800 transition shadow-lg cursor-pointer"
             title={isMuted ? 'Unmute Sound FX' : 'Mute Sound FX'}
           >
-            {isMuted ? <VolumeX className="w-5 h-5 text-rose-400" /> : <Volume2 className="w-5 h-5 text-emerald-400" />}
+            {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />}
           </button>
 
           {/* Admin Switch */}
           {step !== 'admin' ? (
             <button
               onClick={handleAdminAccess}
-              className="p-4 rounded-full bg-slate-900/90 backdrop-blur-lg border border-white/15 text-slate-400 hover:text-white hover:bg-slate-800 transition shadow-lg cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-full bg-slate-900/90 backdrop-blur-lg border border-white/15 text-slate-400 hover:text-white hover:bg-slate-800 transition shadow-lg cursor-pointer"
               title="Admin Dashboard"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ) : (
             <>

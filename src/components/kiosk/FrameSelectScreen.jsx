@@ -30,19 +30,19 @@ export default function FrameSelectScreen() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col justify-between items-center py-4 px-6 sm:px-12 overflow-hidden bg-slate-950 select-none relative">
+    <div className="w-full h-full flex flex-col justify-between items-center p-3 sm:p-5 lg:p-6 overflow-hidden bg-slate-950 select-none relative">
       {/* Background ambient lighting */}
       <AmbientBackground primaryColor="bg-violet-600/15" secondaryColor="bg-pink-600/15" />
 
       {/* Top Header Section */}
       <div className="w-full max-w-5xl mx-auto flex flex-col items-center text-center z-10 flex-shrink-0">
-        <Badge variant="violet" icon={Layers} className="mb-2">
+        <Badge variant="violet" icon={Layers} className="mb-1 text-[11px] py-0.5 px-3">
           Step 1 of 3: Frame Selection
         </Badge>
-        <h2 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight mb-2">
+        <h2 className="font-display font-black text-xl sm:text-3xl text-white tracking-tight mb-1">
           Choose Your Photo Frame
         </h2>
-        <p className="text-slate-400 text-xs sm:text-sm max-w-lg mb-4">
+        <p className="text-slate-400 text-[11px] sm:text-xs max-w-md mb-2">
           Select your favorite template layout. Each frame holds a specific number of camera shots.
         </p>
 
@@ -51,13 +51,13 @@ export default function FrameSelectScreen() {
           tabs={filterTabs}
           activeTab={filterSize}
           onChange={setFilterSize}
-          size="md"
-          className="flex bg-slate-900/90 h-10 p-2 rounded-2xl border border-white/15 gap-2 shadow-inner "
+          size="sm"
+          className="flex bg-slate-900/90 p-1 rounded-2xl border border-white/15 gap-1.5 shadow-inner"
         />
       </div>
 
       {/* Main Full-Height Center Carousel Stage (Centered!) */}
-      <div className="relative w-full max-w-6xl mx-auto z-10 flex-1 flex items-center justify-center min-h-0 my-auto p-4 overflow-hidden">
+      <div className="relative w-full max-w-6xl mx-auto z-10 flex-1 flex items-center justify-center min-h-0 my-auto py-2 px-2 sm:px-4 overflow-hidden">
         {/* Left Arrow Button */}
         <button
           type="button"
@@ -137,7 +137,18 @@ export default function FrameSelectScreen() {
                         </div>
                         <p className="text-xs text-slate-400 flex items-center gap-2">
                           <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                          <span>{slotCount} Photo {slotCount === 1 ? 'Shot' : 'Shots'}</span>
+                          <span>
+                            {(() => {
+                              const slots = frame.photo_slots || [];
+                              const maxShots = slots.length > 0
+                                ? Math.max(...slots.map((s, idx) => Number(s.photo_index || s.order || (idx + 1))))
+                                : slotCount;
+                              if (maxShots < slotCount) {
+                                return `${maxShots} Shots (${slotCount} Slots)`;
+                              }
+                              return `${slotCount} Photo ${slotCount === 1 ? 'Shot' : 'Shots'}`;
+                            })()}
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -159,14 +170,14 @@ export default function FrameSelectScreen() {
       </div>
 
       {/* Bottom Floating Action Dock (Centered) */}
-      <div className="w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 px-8 py-4 shadow-2xl bg-slate-900/90 backdrop-blur-xl z-10 flex-shrink-0">
-        <div className="text-left flex flex-col justify-center">
-          <p className="text-xs text-slate-400 font-bold tracking-wide">Selected Template Layout:</p>
-          <p className="text-base sm:text-lg font-black text-white flex items-center gap-2.5 mt-0.5">
-            <span className="w-3 h-3 rounded-full bg-pink-500 animate-pulse"></span>
-            <span>{selectedFrame?.name || 'Please select a frame'}</span>
+      <div className="w-full mx-auto flex flex-row items-center justify-between gap-3 px-4 sm:px-6 py-2.5 sm:py-3.5 shadow-2xl bg-slate-900/90 backdrop-blur-xl rounded-2xl border border-white/10 z-10 flex-shrink-0">
+        <div className="text-left flex flex-col justify-center min-w-0">
+          <p className="text-[10px] sm:text-xs text-slate-400 font-bold tracking-wide truncate">Selected Layout:</p>
+          <p className="text-xs sm:text-base font-black text-white flex items-center gap-1.5 sm:gap-2 truncate">
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-pink-500 animate-pulse flex-shrink-0"></span>
+            <span className="truncate">{selectedFrame?.name || 'Please select a frame'}</span>
             {selectedFrame && (
-              <Badge variant="pink" size="sm">
+              <Badge variant="pink" size="sm" className="hidden xs:inline-flex text-[10px] py-0 px-1.5">
                 {selectedFrame.photo_slots?.length || 0} Shots
               </Badge>
             )}
@@ -175,12 +186,13 @@ export default function FrameSelectScreen() {
 
         <Button
           variant="primary"
-          size="xl"
+          size="lg"
           rightIcon={ChevronRight}
           onClick={confirmFrame}
           disabled={!selectedFrame}
+          className="text-xs sm:text-sm font-black py-2.5 px-4 sm:py-3 sm:px-6 flex-shrink-0"
         >
-          CONFIRM & START POSING
+          CONFIRM &amp; START POSING
         </Button>
       </div>
     </div>

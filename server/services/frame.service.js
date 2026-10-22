@@ -1,50 +1,88 @@
+import mongoose from 'mongoose';
 import { FrameModel } from '../infrastructure/database/models/FrameModel.js';
 import { UserModel } from '../infrastructure/database/models/UserModel.js';
+import { db } from '../db.js';
 
 export class FrameService {
   static async getFrames(user, onlyActive = false) {
-    const query = onlyActive ? { is_active: true } : {};
+    const isMongoConnected = Boolean(mongoose.connection && mongoose.connection.readyState === 1);
     
-    // Always fetch admin to determine which frames belong to admin
-    const admin = await UserModel.findOne({ role: 'admin' }).select('_id').lean();
-    const adminIdStr = admin ? admin._id.toString() : null;
+    if (isMongoConnected) {
+      try {
+        const query = onlyActive ? { is_active: true } : {};
+        const admin = await UserModel.findOne({ role: 'admin' }).select('_id').lean();
+        const adminIdStr = admin ? admin._id.toString() : null;
 
-    if (user) {
-      if (user.role === 'admin') {
-        query.user_id = user.id;
-      } else {
-        if (admin) {
-          query.$or = [{ user_id: user.id }, { user_id: admin._id }];
-        } else {
-          query.user_id = user.id;
+        if (user) {
+          if (user.role === 'admin') {
+            query.user_id = user.id;
+          } else {
+            if (admin) {
+              query.$or = [{ user_id: user.id }, { user_id: admin._id }];
+            } else {
+              query.user_id = user.id;
+            }
+          }
         }
+        const frames = await FrameModel.find(query).sort({ created_at: -1 }).lean();
+        if (frames && frames.length > 0) {
+          return frames.map(frame => ({
+            ...frame,
+            id: frame._id.toString(),
+            is_admin_frame: adminIdStr === frame.user_id?.toString()
+          }));
+        }
+      } catch (err) {
+        console.warn('⚠️ Error querying FrameModel, falling back to local frames:', err.message);
       }
     }
-    const frames = await FrameModel.find(query).sort({ created_at: -1 }).lean();
-    return frames.map(frame => ({
-      ...frame,
-      id: frame._id.toString(),
-      is_admin_frame: adminIdStr === frame.user_id?.toString()
-    }));
+
+    // Fallback to local db.json frames
+    try {
+      const localFrames = db.getFrames(onlyActive);
+      return localFrames.map(frame => ({
+        ...frame,
+        is_admin_frame: true
+      }));
+    } catch (err) {
+      console.warn('⚠️ Error reading local frames:', err);
+      return [];
+    }
   }
 
   static async getFrameById(id, user) {
-    const query = { _id: id };
-    if (user) {
-      if (user.role === 'admin') {
-        query.user_id = user.id;
-      } else {
-        const admin = await UserModel.findOne({ role: 'admin' }).select('_id').lean();
-        if (admin) {
-          query.$or = [{ user_id: user.id }, { user_id: admin._id }];
-        } else {
-          query.user_id = user.id;
+    const isMongoConnected = Boolean(mongoose.connection && mongoose.connection.readyState === 1);
+
+    if (isMongoConnected && mongoose.isValidObjectId(id)) {
+      try {
+        const query = { _id: id };
+        if (user) {
+          if (user.role === 'admin') {
+            query.user_id = user.id;
+          } else {
+            const admin = await UserModel.findOne({ role: 'admin' }).select('_id').lean();
+            if (admin) {
+              query.$or = [{ user_id: user.id }, { user_id: admin._id }];
+            } else {
+              query.user_id = user.id;
+            }
+          }
         }
+        const frame = await FrameModel.findOne(query).lean();
+        if (frame) return { ...frame, id: frame._id.toString() };
+      } catch (err) {
+        console.warn('⚠️ Error querying frame by ID from MongoDB:', err.message);
       }
     }
-    const frame = await FrameModel.findOne(query).lean();
-    if (!frame) return null;
-    return { ...frame, id: frame._id.toString() };
+
+    try {
+      const local = db.getFrameById(id);
+      if (local) return { ...local, is_admin_frame: true };
+    } catch (err) {
+      console.warn('⚠️ Error reading local frame by ID:', err);
+    }
+
+    return null;
   }
 
   static async createFrame(data, file, user) {

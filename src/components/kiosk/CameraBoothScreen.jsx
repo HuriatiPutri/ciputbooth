@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Camera, RefreshCw, Sparkles, FlipHorizontal, ArrowLeft, Check, Video, Smile } from 'lucide-react';
 import { useBooth } from '../../context/BoothContext';
 import { soundManager } from '../../utils/audio';
-import { generateMockPhoto } from '../../utils/canvasRenderer';
+import { generateMockPhoto, generateMockLiveClip, getSupportedVideoMimeType } from '../../utils/canvasRenderer';
 import { Button, Badge } from '../common';
 
 const POSE_SUGGESTIONS = [
@@ -27,11 +27,16 @@ export default function CameraBoothScreen() {
     setRetakeSingleSlot
   } = useBooth();
 
-  const totalSlots = selectedFrame?.photo_slots?.length || 3;
+  const slots = selectedFrame?.photo_slots || [];
+  const totalSlots = slots.length > 0
+    ? Math.max(...slots.map((s, idx) => Number(s.photo_index || s.order || (idx + 1))))
+    : 3;
   const currentSlotNumber = currentSlotIndex + 1;
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   const [countdown, setCountdown] = useState(null);
   const [isCounting, setIsCounting] = useState(false);
@@ -83,36 +88,118 @@ export default function CameraBoothScreen() {
     };
   }, [isMockCamera]);
 
+  // Start recording user movement during countdown for Live Picture
+  const startMotionRecording = () => {
+    try {
+      if (isMockCamera || !videoRef.current || !videoRef.current.srcObject) {
+        return;
+      }
+      const stream = videoRef.current.srcObject;
+      recordedChunksRef.current = [];
+      const mimeType = getSupportedVideoMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+        }
+      };
+      recorder.start(100);
+      mediaRecorderRef.current = recorder;
+    } catch (err) {
+      console.warn('Could not start live motion recording:', err);
+    }
+  };
+
+  // Stop motion recording and retrieve Data URL
+  const stopMotionRecording = () => {
+    return new Promise((resolve) => {
+      if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+        resolve(null);
+        return;
+      }
+      mediaRecorderRef.current.onstop = () => {
+        try {
+          const mime = mediaRecorderRef.current?.mimeType || 'video/webm';
+          const blob = new Blob(recordedChunksRef.current, { type: mime });
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        } catch (e) {
+          console.warn('Live clip blob error:', e);
+          resolve(null);
+        }
+      };
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  };
+
+  const countdownTimerRef = useRef(null);
+  const autoNextTimeoutRef = useRef(null);
+
+  // Auto start countdown when camera stream is active and not already counting
+  useEffect(() => {
+    if (!streamActive) return;
+
+    // Small delay (1000ms) to let user see previous captured snap and prepare posture
+    const prepTimer = setTimeout(() => {
+      startCountdown();
+    }, 1000);
+
+    return () => clearTimeout(prepTimer);
+  }, [streamActive, currentSlotIndex]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
+    };
+  }, []);
+
   // Handle countdown and photo snapping
   const startCountdown = () => {
-    if (isCounting) return;
+    if (countdownTimerRef.current) return;
     setIsCounting(true);
     let count = Number(settings?.countdownSeconds) || 3;
     setCountdown(count);
     soundManager.playCountdownTick();
 
-    const timer = setInterval(() => {
+    // Start recording user movement for Live Picture
+    startMotionRecording();
+
+    countdownTimerRef.current = setInterval(() => {
       count -= 1;
       if (count > 0) {
         setCountdown(count);
         soundManager.playCountdownTick();
       } else {
-        clearInterval(timer);
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
         setCountdown(null);
         capturePhoto();
       }
     }, 1000);
   };
 
-  // Capture frame from video or mock generator
-  const capturePhoto = () => {
+  // Capture frame from video or mock generator and finalize live clip
+  const capturePhoto = async () => {
     setIsFlashing(true);
     soundManager.playCaptureShutter();
+
+    // Stop recorder and collect live movement clip
+    const liveClipPromise = isMockCamera || cameraError
+      ? generateMockLiveClip(currentSlotNumber)
+      : stopMotionRecording();
 
     setTimeout(() => {
       setIsFlashing(false);
       setIsCounting(false);
-    }, 450);
+    }, 350);
 
     let photoDataUrl = '';
 
@@ -136,13 +223,16 @@ export default function CameraBoothScreen() {
       photoDataUrl = canvas.toDataURL('image/jpeg', 0.95);
     }
 
-    addCapturedPhoto(photoDataUrl);
+    const liveClipUrl = await liveClipPromise;
+    // Release counting state before advancing to next slot to ensure next auto-countdown triggers cleanly
+    setIsCounting(false);
+    addCapturedPhoto(photoDataUrl, liveClipUrl);
   };
 
   const currentPose = POSE_SUGGESTIONS[(currentSlotNumber - 1) % POSE_SUGGESTIONS.length];
 
   return (
-    <div className="w-full h-full flex flex-col justify-between py-4 px-6 sm:px-12 bg-slate-950 overflow-hidden relative">
+    <div className="w-full h-full flex flex-col justify-between p-3 sm:p-5 lg:p-6 bg-slate-950 overflow-hidden relative">
       {/* Hidden processing canvas */}
       <canvas ref={canvasRef} className="hidden" />
 
@@ -152,10 +242,10 @@ export default function CameraBoothScreen() {
       )}
 
       {/* Top Header Bar */}
-      <div className="mx-auto w-full flex items-center justify-between z-10">
+      <div className="mx-auto w-full flex items-center justify-between z-10 flex-shrink-0">
         <Button
           variant="secondary"
-          size="md"
+          size="sm"
           leftIcon={ArrowLeft}
           onClick={() => {
             if (retakeSingleSlot) {
@@ -166,26 +256,26 @@ export default function CameraBoothScreen() {
             }
           }}
           disabled={isCounting}
-          className="rounded-full"
+          className="rounded-full text-xs py-1.5 px-3 sm:px-4"
         >
-          {retakeSingleSlot ? 'Cancel Retake' : 'Change Frame'}
+          {retakeSingleSlot ? 'Cancel' : 'Change Frame'}
         </Button>
 
         {/* Slot Progress Pill */}
-        <div className="flex items-center gap-3.5 bg-slate-900/90 backdrop-blur-md px-8 py-4 rounded-full border border-white/15 shadow-2xl">
-          <Camera className="w-5 h-5 text-pink-400" />
+        <div className="flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-md px-4 sm:px-6 py-1.5 sm:py-2.5 rounded-full border border-white/15 shadow-xl">
+          <Camera className="w-4 h-4 text-pink-400 flex-shrink-0" />
           <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
-            {retakeSingleSlot ? `Retaking Shot #${currentSlotNumber}` : `Photo ${currentSlotNumber} of ${totalSlots}`}
+            {retakeSingleSlot ? `Retake #${currentSlotNumber}` : `Shot ${currentSlotNumber} / ${totalSlots}`}
           </span>
-          <div className="flex items-center gap-2.5 ml-2">
+          <div className="flex items-center gap-1.5 ml-1">
             {Array.from({ length: totalSlots }).map((_, idx) => (
               <div
                 key={idx}
-                className={`w-3.5 h-3.5 rounded-full transition-all ${
+                className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all ${
                   idx < currentSlotIndex
                     ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50'
                     : idx === currentSlotIndex
-                    ? 'bg-pink-500 scale-125 ring-4 ring-pink-400/40 animate-pulse'
+                    ? 'bg-pink-500 scale-125 ring-2 ring-pink-400/40 animate-pulse'
                     : 'bg-slate-700'
                 }`}
               />
@@ -196,27 +286,27 @@ export default function CameraBoothScreen() {
         {/* Camera Mirror Toggle */}
         <Button
           variant="secondary"
-          size="md"
+          size="sm"
           leftIcon={FlipHorizontal}
           onClick={() => setIsMirrored(!isMirrored)}
-          className="rounded-full"
+          className="rounded-full text-xs py-1.5 px-3 sm:px-4"
         >
-          <span className="hidden sm:inline">{isMirrored ? 'Mirrored' : 'Normal'}</span>
+          <span className="hidden xs:inline">{isMirrored ? 'Mirrored' : 'Normal'}</span>
         </Button>
       </div>
 
       {/* Main Center Viewport: Camera Feed + Guides */}
-      <div className="relative w-full mx-auto my-auto z-10 flex flex-col items-center">
+      <div className="relative w-full mx-auto my-auto z-10 flex flex-col items-center flex-1 justify-center min-h-0 py-2">
         {/* Pose Suggestion Alert */}
-        <div className="mb-4 inline-flex items-center gap-3 px-8 py-4 rounded-full bg-violet-950/80 border border-violet-500/40 backdrop-blur-md shadow-2xl animate-bounce">
-          <span className="text-xl">{currentPose.emoji}</span>
-          <span className="text-xs sm:text-sm font-black text-violet-200">
+        <div className="mb-2 sm:mb-3 inline-flex items-center gap-2 px-4 sm:px-6 py-1.5 rounded-full bg-violet-950/80 border border-violet-500/40 backdrop-blur-md shadow-xl animate-bounce flex-shrink-0">
+          <span className="text-base sm:text-lg">{currentPose.emoji}</span>
+          <span className="text-[11px] sm:text-xs font-black text-violet-200">
             {currentPose.title} <span className="text-slate-400 font-normal">({currentPose.hint})</span>
           </span>
         </div>
 
-        {/* Camera Frame Box */}
-        <div className="relative w-full max-w-2xl aspect-[4/3] rounded-3xl overflow-hidden glass-panel border-2 border-white/25 shadow-2xl bg-black flex items-center justify-center p-2">
+        {/* Camera Frame Box with responsive max-height */}
+        <div className="relative w-full max-w-xl aspect-[4/3] max-h-[50vh] sm:max-h-[55vh] rounded-2xl sm:rounded-3xl overflow-hidden glass-panel border-2 border-white/25 shadow-2xl bg-black flex items-center justify-center p-1.5 sm:p-2">
           {/* Live Video Element */}
           {!isMockCamera ? (
             <video
@@ -224,40 +314,48 @@ export default function CameraBoothScreen() {
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover rounded-2xl transition-transform ${isMirrored ? 'scale-x-[-1]' : ''}`}
+              className={`w-full h-full object-cover rounded-xl sm:rounded-2xl transition-transform ${isMirrored ? 'scale-x-[-1]' : ''}`}
             />
           ) : (
             /* Mock Camera Animated Portrait View */
-            <div className="relative w-full h-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-8 text-center rounded-2xl">
-              <div className="w-36 h-36 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-1 mb-5 shadow-2xl shadow-pink-500/30 animate-pulse">
-                <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-6xl">
+            <div className="relative w-full h-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4 text-center rounded-xl sm:rounded-2xl">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-1 mb-2 shadow-2xl shadow-pink-500/30 animate-pulse">
+                <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-4xl sm:text-5xl">
                   {currentPose.emoji}
                 </div>
               </div>
-              <h4 className="font-display font-black text-white text-2xl mb-1">Simulated Studio Camera</h4>
-              <p className="text-slate-400 text-xs sm:text-sm max-w-xs leading-relaxed">
-                Click &ldquo;Snap Photo&rdquo; below to trigger countdown for photo #{currentSlotNumber}.
+              <h4 className="font-display font-black text-white text-base sm:text-lg mb-0.5">Simulated Studio Camera</h4>
+              <p className="text-slate-400 text-[11px] max-w-xs leading-tight">
+                Automatic countdown in progress for photo #{currentSlotNumber}.
               </p>
             </div>
           )}
 
           {/* Camera Viewfinder Corners */}
-          <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-white/70 pointer-events-none"></div>
-          <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-white/70 pointer-events-none"></div>
-          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-white/70 pointer-events-none"></div>
-          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-white/70 pointer-events-none"></div>
+          <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-white/70 pointer-events-none"></div>
+          <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-white/70 pointer-events-none"></div>
+          <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-white/70 pointer-events-none"></div>
+          <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-white/70 pointer-events-none"></div>
 
           {/* Center Crosshair */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-            <div className="w-10 h-10 border border-white rounded-full"></div>
+            <div className="w-8 h-8 border border-white rounded-full"></div>
           </div>
+
+          {/* REC Motion Live Picture Indicator */}
+          {countdown !== null && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-rose-600/90 backdrop-blur-md px-3 py-1 rounded-full text-white text-[11px] font-black shadow-xl border border-white/20 animate-pulse pointer-events-none">
+              <div className="w-2 h-2 rounded-full bg-white animate-ping" />
+              <span className="tracking-wider uppercase">REC LIVE MOTION</span>
+            </div>
+          )}
 
           {/* Big Countdown Overlay */}
           {countdown !== null && (
             <div className="absolute inset-0 bg-black/50 backdrop-blur-[3px] flex items-center justify-center z-30 pointer-events-none">
-              <div className="w-40 h-40 rounded-full bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[4px] shadow-2xl shadow-pink-500/50">
+              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[3px] shadow-2xl shadow-pink-500/50">
                 <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center animate-count-pop">
-                  <span className="font-display font-black text-8xl bg-gradient-to-r from-pink-400 via-violet-300 to-amber-200 bg-clip-text text-transparent">
+                  <span className="font-display font-black text-6xl sm:text-7xl bg-gradient-to-r from-pink-400 via-violet-300 to-amber-200 bg-clip-text text-transparent">
                     {countdown}
                   </span>
                 </div>
@@ -268,9 +366,9 @@ export default function CameraBoothScreen() {
       </div>
 
       {/* Bottom Shutter & Completed Photos Gallery Drawer */}
-      <div className="mx-auto w-full z-10 flex flex-col sm:flex-row items-center justify-between gap-6 p-8 rounded-3xl glass-panel border border-white/20 shadow-2xl">
+      <div className="mx-auto w-full z-10 flex flex-row items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl sm:rounded-3xl glass-panel border border-white/20 shadow-xl flex-shrink-0">
         {/* Completed Photos Previews */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar">
           {Array.from({ length: totalSlots }).map((_, idx) => {
             const photo = capturedPhotos[idx];
             const isCurrent = idx === currentSlotIndex;
@@ -278,8 +376,8 @@ export default function CameraBoothScreen() {
             return (
               <div
                 key={idx}
-                className={`relative w-18 h-18 rounded-2xl overflow-hidden border-2 transition-all p-0.5 ${isCurrent
-                  ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105 shadow-xl'
+                className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 transition-all p-0.5 flex-shrink-0 ${isCurrent
+                  ? 'border-pink-500 ring-2 ring-pink-500/30 scale-105 shadow-xl'
                   : photo
                     ? 'border-emerald-500/80 bg-slate-800 shadow-md'
                     : 'border-white/15 bg-slate-900/80'
@@ -287,13 +385,13 @@ export default function CameraBoothScreen() {
               >
                 {photo ? (
                   <>
-                    <img src={photo} alt={`Snap ${idx + 1}`} className="w-full h-full object-cover rounded-xl" />
-                    <div className="absolute bottom-0 right-0 bg-emerald-500 text-slate-950 p-1 rounded-tl-lg shadow">
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <img src={photo} alt={`Snap ${idx + 1}`} className="w-full h-full object-cover rounded-lg" />
+                    <div className="absolute bottom-0 right-0 bg-emerald-500 text-slate-950 p-0.5 rounded-tl-md shadow">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
                     </div>
                   </>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs font-black text-slate-500">
+                  <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-500">
                     #{idx + 1}
                   </div>
                 )}
@@ -302,19 +400,17 @@ export default function CameraBoothScreen() {
           })}
         </div>
 
-        {/* Big Shutter Button */}
+        {/* Shutter / Auto-Capture Status Indicator */}
         <button
           onClick={startCountdown}
           disabled={isCounting}
-          className="group relative inline-flex items-center justify-center gap-3.5 px-12 py-5 rounded-full btn-primary text-lg font-display font-black shadow-2xl transition-all disabled:opacity-50 min-w-[280px] cursor-pointer hover:scale-105"
+          className="group relative inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:px-8 sm:py-3.5 rounded-full btn-primary text-xs sm:text-sm font-display font-black shadow-xl transition-all disabled:opacity-50 flex-shrink-0 cursor-pointer hover:scale-105"
         >
-          <Camera className="w-6 h-6 group-hover:rotate-12 transition-transform stroke-[2.5]" />
+          <Camera className="w-4 h-4 group-hover:rotate-12 transition-transform stroke-[2.5]" />
           <span>
             {isCounting
               ? `READY... ${countdown || ''}`
-              : retakeSingleSlot
-              ? `SNAP RETAKE #${currentSlotNumber}`
-              : `SNAP PHOTO #${currentSlotNumber}`}
+              : `AUTO SNAPPING #${currentSlotNumber}`}
           </span>
         </button>
       </div>

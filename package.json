@@ -11,11 +11,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:start": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"wait-on http://localhost:5174 && electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:win": "npm run build && electron-builder --win --x64",
+    "build:all": "npm run build && electron-builder -mw"
   },
   "build": {
     "appId": "com.ciputbooth.app",
     "productName": "CiputBooth",
+    "asar": false,
     "directories": {
       "output": "release"
     },
@@ -32,7 +36,20 @@
       "target": "dmg"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     }
   },
   "dependencies": {
@@ -42,6 +59,8 @@
     "cors": "^2.8.5",
     "dotenv": "^18.0.5",
     "express": "^4.21.2",
+    "gif-encoder-2": "^1.0.5",
+    "jimp": "^1.6.1",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.16.0",
     "midtrans-client": "^1.4.3",

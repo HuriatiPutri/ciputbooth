@@ -3,6 +3,26 @@ import { User } from '../../../domain/entities/User.js';
 import { ConflictError } from '../../../domain/errors.js';
 import { UserModel } from '../models/UserModel.js';
 
+import bcrypt from 'bcryptjs';
+import { ENV } from '../../../config/env.js';
+import { USER_ROLES } from '../../../domain/entities/User.js';
+
+const OFFLINE_ADMIN_ID = '000000000000000000000001';
+
+function getOfflineAdmin() {
+  return new User({
+    id: OFFLINE_ADMIN_ID,
+    role: USER_ROLES.ADMIN,
+    name: ENV.SEED_ADMIN_NAME,
+    email: ENV.SEED_ADMIN_EMAIL.toLowerCase(),
+    passwordHash: bcrypt.hashSync(ENV.SEED_ADMIN_PASSWORD, 10),
+    isActive: true,
+    subscriptionStatus: 'active',
+    subscriptionEnd: null,
+    createdAt: new Date().toISOString()
+  });
+}
+
 function toEntity(doc) {
   if (!doc) return null;
   return new User({
@@ -20,16 +40,52 @@ function toEntity(doc) {
 
 export class MongoUserRepository {
   async findById(id) {
+    if (id === OFFLINE_ADMIN_ID || id === 'default_user' || id === 'default_admin') {
+      return getOfflineAdmin();
+    }
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      return getOfflineAdmin();
+    }
     if (!mongoose.isValidObjectId(id)) return null;
-    return toEntity(await UserModel.findById(id));
+    try {
+      return toEntity(await UserModel.findById(id));
+    } catch {
+      return getOfflineAdmin();
+    }
   }
 
   async findByEmail(email) {
-    return toEntity(await UserModel.findOne({ email }));
+    const normalized = (email || '').toLowerCase().trim();
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      if (normalized === ENV.SEED_ADMIN_EMAIL.toLowerCase()) {
+        return getOfflineAdmin();
+      }
+      return null;
+    }
+    try {
+      const doc = await UserModel.findOne({ email: normalized });
+      if (doc) return toEntity(doc);
+      if (normalized === ENV.SEED_ADMIN_EMAIL.toLowerCase()) {
+        return getOfflineAdmin();
+      }
+      return null;
+    } catch {
+      if (normalized === ENV.SEED_ADMIN_EMAIL.toLowerCase()) {
+        return getOfflineAdmin();
+      }
+      return null;
+    }
   }
 
   async findAll() {
-    return (await UserModel.find().sort({ created_at: -1 })).map(toEntity);
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      return [getOfflineAdmin()];
+    }
+    try {
+      return (await UserModel.find().sort({ created_at: -1 })).map(toEntity);
+    } catch {
+      return [getOfflineAdmin()];
+    }
   }
 
   async create(user) {

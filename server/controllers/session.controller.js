@@ -26,6 +26,16 @@ export class SessionController {
   static async create(req, res, next) {
     try {
       const session = await SessionService.createSession(req.body);
+
+      // Broadcast new session via socket so open Session Gallery updates in real-time
+      try {
+        const { getIO } = await import('../socket.js');
+        const io = getIO();
+        io.emit('new_session', session);
+      } catch (e) {
+        // Socket broadcast optional
+      }
+
       res.status(201).json({
         success: true,
         message: 'Session saved successfully',
@@ -39,6 +49,16 @@ export class SessionController {
   static async delete(req, res, next) {
     try {
       await SessionService.deleteSession(req.params.id, req.user);
+
+      // Broadcast session deletion via socket
+      try {
+        const { getIO } = await import('../socket.js');
+        const io = getIO();
+        io.emit('delete_session', { id: req.params.id });
+      } catch (e) {
+        // Socket broadcast optional
+      }
+
       res.json({ success: true, message: 'Session deleted successfully' });
     } catch (error) {
       next(error);

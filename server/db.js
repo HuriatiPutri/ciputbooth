@@ -153,24 +153,42 @@ class Database {
 
   getSessionById(id) {
     const data = this.load();
-    return (data.sessions || []).find((s) => s.id === id) || null;
+    return (data.sessions || []).find((s) => s.id === id || String(s._id) === id) || null;
   }
 
   createSession(sessionData) {
     const data = this.load();
     const newSession = {
       id: sessionData.id || `session_${Date.now()}`,
-      frame_id: sessionData.frame_id,
-      frame_name: sessionData.frame_name || 'Custom Frame',
-      composite_url: sessionData.composite_url || '',
-      photos: sessionData.photos || [],
+      user_id: sessionData.user_id || 'default_user',
+      event_id: sessionData.event_id || 'default_event',
+      frame_id: sessionData.frame_id || null,
+      frame_name: sessionData.frame_name || 'Photo Strip',
+      composite_url: sessionData.composite_url || sessionData.photo_url || '',
+      photo_url: sessionData.photo_url || sessionData.composite_url || '',
+      live_photo_url: sessionData.live_photo_url || '',
+      gif_url: sessionData.gif_url || '',
+      photos: Array.isArray(sessionData.photos) ? sessionData.photos : [],
+      live_clips: Array.isArray(sessionData.live_clips) ? sessionData.live_clips : [],
       filter_applied: sessionData.filter_applied || 'normal',
       copies: sessionData.copies || 1,
-      created_at: new Date().toISOString()
+      status: sessionData.status || 'success',
+      amount: sessionData.amount || 0,
+      order_id: sessionData.order_id || null,
+      share_url: sessionData.share_url || '',
+      download_url: sessionData.download_url || '',
+      download_gif_url: sessionData.download_gif_url || '',
+      download_live_url: sessionData.download_live_url || '',
+      created_at: sessionData.created_at || new Date().toISOString()
     };
 
     data.sessions = data.sessions || [];
-    data.sessions.unshift(newSession);
+    const existingIndex = data.sessions.findIndex((s) => s.id === newSession.id || String(s._id) === newSession.id);
+    if (existingIndex >= 0) {
+      data.sessions[existingIndex] = { ...data.sessions[existingIndex], ...newSession };
+    } else {
+      data.sessions.unshift(newSession);
+    }
     this.save(data);
     return newSession;
   }
@@ -178,10 +196,10 @@ class Database {
   deleteSession(id) {
     const data = this.load();
     data.sessions = data.sessions || [];
-    const session = data.sessions.find((s) => s.id === id);
+    const session = data.sessions.find((s) => s.id === id || String(s._id) === id);
     if (!session) return false;
 
-    data.sessions = data.sessions.filter((s) => s.id !== id);
+    data.sessions = data.sessions.filter((s) => s.id !== id && String(s._id) !== id);
     this.save(data);
     return true;
   }

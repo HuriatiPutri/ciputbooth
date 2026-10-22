@@ -8,18 +8,21 @@ export default defineConfig({
     tailwindcss()
   ],
   server: {
+    host: true,
     port: 5173,
     watch: {
       ignored: ['**/server/**']
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://localhost:3001',
         changeOrigin: true,
+        secure: false,
       },
       '/uploads': {
-        target: 'http://localhost:3001',
+        target: 'https://localhost:3001',
         changeOrigin: true,
+        secure: false,
       }
     }
   }

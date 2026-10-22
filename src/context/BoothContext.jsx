@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { soundManager } from '../utils/audio';
-import { generateComposite } from '../utils/canvasRenderer';
+import { generateComposite, generateLiveCompositeVideo } from '../utils/canvasRenderer';
 
 const BoothContext = createContext(null);
 
@@ -40,11 +40,14 @@ export function BoothProvider({ children }) {
   const [frames, setFrames] = useState([]);
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [capturedPhotos, setCapturedPhotos] = useState([]);
+  const [capturedLiveClips, setCapturedLiveClips] = useState([]);
   const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
   const [filterId, setFilterId] = useState('normal');
   const [stickers, setStickers] = useState([]);
   const [customText, setCustomText] = useState('STUDIO CIPUT');
   const [compositeUrl, setCompositeUrl] = useState('');
+  const [liveCompositeUrl, setLiveCompositeUrl] = useState('');
+  const [previewMode, setPreviewMode] = useState('photo'); // 'photo' | 'live'
   const [isLoading, setIsLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isMockCamera, setIsMockCamera] = useState(false);
@@ -203,10 +206,13 @@ export function BoothProvider({ children }) {
     soundManager.playClick();
     setRetakeSingleSlot(false);
     setCapturedPhotos([]);
+    setCapturedLiveClips([]);
     setCurrentSlotIndex(0);
     setFilterId('normal');
     setStickers([]);
     setCompositeUrl('');
+    setLiveCompositeUrl('');
+    setPreviewMode('photo');
     setSavedSessionId(null);
     setSavedSessionData(null);
     fetchActiveFrames();
@@ -233,15 +239,23 @@ export function BoothProvider({ children }) {
     soundManager.playClick();
     setRetakeSingleSlot(false);
     setCapturedPhotos([]);
+    setCapturedLiveClips([]);
+    setLiveCompositeUrl('');
     setCurrentSlotIndex(0);
     setStep('booth_capture');
   };
 
-  // Add captured photo
-  const addCapturedPhoto = (photoDataUrl) => {
-    const updated = [...capturedPhotos];
-    updated[currentSlotIndex] = photoDataUrl;
-    setCapturedPhotos(updated);
+  // Add captured photo and optional live video clip
+  const addCapturedPhoto = (photoDataUrl, liveClipUrl = null) => {
+    const updatedPhotos = [...capturedPhotos];
+    updatedPhotos[currentSlotIndex] = photoDataUrl;
+    setCapturedPhotos(updatedPhotos);
+
+    if (liveClipUrl) {
+      const updatedClips = [...capturedLiveClips];
+      updatedClips[currentSlotIndex] = liveClipUrl;
+      setCapturedLiveClips(updatedClips);
+    }
 
     // If retaking a single selected slot, return immediately to customize screen
     if (retakeSingleSlot) {
@@ -251,8 +265,13 @@ export function BoothProvider({ children }) {
       return;
     }
 
-    const totalSlots = selectedFrame?.photo_slots?.length || 3;
-    if (currentSlotIndex + 1 < totalSlots) {
+    // Calculate total required capture shots (e.g. if 6 slots but mapped to 3 photos, total shots is 3)
+    const slots = selectedFrame?.photo_slots || [];
+    const totalRequiredPhotos = slots.length > 0
+      ? Math.max(...slots.map((s, idx) => Number(s.photo_index || s.order || (idx + 1))))
+      : 3;
+
+    if (currentSlotIndex + 1 < totalRequiredPhotos) {
       setCurrentSlotIndex(currentSlotIndex + 1);
     } else {
       // Completed all snaps! Proceed to customization
@@ -274,6 +293,8 @@ export function BoothProvider({ children }) {
     soundManager.playClick();
     setRetakeSingleSlot(false);
     setCapturedPhotos([]);
+    setCapturedLiveClips([]);
+    setLiveCompositeUrl('');
     setCurrentSlotIndex(0);
     setStep('booth_capture');
   };
@@ -308,6 +329,8 @@ export function BoothProvider({ children }) {
     if (!selectedFrame) return;
     try {
       setIsLoading(true);
+
+      // 1. Generate regular still composite
       const finalImageBase64 = await generateComposite({
         frame: selectedFrame,
         photos: capturedPhotos,
@@ -318,7 +341,25 @@ export function BoothProvider({ children }) {
 
       setCompositeUrl(finalImageBase64);
 
-      // Save session to backend
+      // 2. Generate live motion composite video if live clips exist
+      let liveCompositeBase64 = '';
+      if (capturedLiveClips && capturedLiveClips.length > 0) {
+        try {
+          liveCompositeBase64 = await generateLiveCompositeVideo({
+            frame: selectedFrame,
+            liveClips: capturedLiveClips,
+            photos: capturedPhotos,
+            filterId,
+            stickers,
+            customText
+          });
+          setLiveCompositeUrl(liveCompositeBase64);
+        } catch (liveErr) {
+          console.warn('Could not generate live composite video:', liveErr);
+        }
+      }
+
+      // 3. Save session to backend
       try {
         const response = await fetch('/api/sessions', {
           method: 'POST',
@@ -328,7 +369,9 @@ export function BoothProvider({ children }) {
             frame_id: selectedFrame.id,
             frame_name: selectedFrame.name,
             composite_base64: finalImageBase64,
+            live_composite_base64: liveCompositeBase64,
             photos: capturedPhotos,
+            live_clips: capturedLiveClips,
             filter_applied: filterId,
             copies: 1,
             order_id: paymentOrderId
@@ -338,6 +381,9 @@ export function BoothProvider({ children }) {
         if (resData.success && resData.data) {
           setSavedSessionId(resData.data.id);
           setSavedSessionData(resData.data);
+          if (resData.data.live_photo_url && !liveCompositeBase64) {
+            setLiveCompositeUrl(resData.data.live_photo_url);
+          }
         }
       } catch (err) {
         console.warn('Could not save session to backend:', err);
@@ -358,9 +404,12 @@ export function BoothProvider({ children }) {
     soundManager.playClick();
     setStep('welcome');
     setCapturedPhotos([]);
+    setCapturedLiveClips([]);
     setCurrentSlotIndex(0);
     setStickers([]);
     setCompositeUrl('');
+    setLiveCompositeUrl('');
+    setPreviewMode('photo');
     setSavedSessionId(null);
     setSavedSessionData(null);
   }, [setStep]);
@@ -378,6 +427,7 @@ export function BoothProvider({ children }) {
         chooseFrame,
         confirmFrame,
         capturedPhotos,
+        capturedLiveClips,
         currentSlotIndex,
         setCurrentSlotIndex,
         addCapturedPhoto,
@@ -391,6 +441,10 @@ export function BoothProvider({ children }) {
         customText,
         setCustomText,
         compositeUrl,
+        liveCompositeUrl,
+        setLiveCompositeUrl,
+        previewMode,
+        setPreviewMode,
         processAndFinishSession,
         resetToWelcome,
         startSession,

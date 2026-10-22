@@ -3,9 +3,11 @@ import { Download, Trash2, Printer, Image as ImageIcon, Clock, QrCode, Share2, C
 import QRCode from 'qrcode';
 import { Modal, Button, Badge } from '../common';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 
 export default function SessionGallery() {
   const { authFetch } = useAuth();
+  const { socket } = useSocket() || {};
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -22,20 +24,20 @@ export default function SessionGallery() {
     carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
-  const loadSessions = async () => {
+  const loadSessions = async (showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       const data = await authFetch('/api/sessions');
       setSessions(data || []);
     } catch (err) {
       console.error('Error fetching sessions:', err);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadSessions();
+    loadSessions(true);
 
     // Fetch server IP info for network QR codes
     fetch('/api/info')
@@ -47,7 +49,45 @@ export default function SessionGallery() {
         }
       })
       .catch((err) => console.warn('Could not fetch server network info:', err));
+
+    // Fallback polling every 5s so gallery stays synced even if socket disconnects
+    const pollInterval = setInterval(() => {
+      loadSessions(false);
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
   }, []);
+
+  // Real-time socket listener for new customer captures and deletions
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewSession = (newSession) => {
+      console.log('⚡ Real-time new session received in gallery:', newSession);
+      if (!newSession) return;
+      setSessions((prev) => {
+        const id = String(newSession.id || newSession._id);
+        const exists = prev.some((s) => String(s.id || s._id) === id);
+        if (exists) return prev;
+        return [newSession, ...prev];
+      });
+    };
+
+    const handleDeleteSession = ({ id }) => {
+      console.log('⚡ Real-time session deleted in gallery:', id);
+      if (!id) return;
+      setSessions((prev) => prev.filter((s) => String(s.id || s._id) !== String(id)));
+      setSelectedSession((curr) => (curr && String(curr.id || curr._id) === String(id) ? null : curr));
+    };
+
+    socket.on('new_session', handleNewSession);
+    socket.on('delete_session', handleDeleteSession);
+
+    return () => {
+      socket.off('new_session', handleNewSession);
+      socket.off('delete_session', handleDeleteSession);
+    };
+  }, [socket]);
 
   // Generate QR Code when a session is opened in modal
   useEffect(() => {
@@ -93,18 +133,77 @@ export default function SessionGallery() {
   };
 
   const handlePrintSession = (compositeUrl) => {
-    const printWin = window.open('', '_blank');
-    if (!printWin) return;
-    printWin.document.write(`
-      <html>
-        <head><title>Print Photo Strip</title></head>
-        <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
-          <img src="${compositeUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
-          <script>window.onload = () => { window.print(); window.close(); };</script>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
+    if (!compositeUrl) return;
+
+    try {
+      let printIframe = document.getElementById('admin-print-iframe');
+      if (!printIframe) {
+        printIframe = document.createElement('iframe');
+        printIframe.id = 'admin-print-iframe';
+        printIframe.style.position = 'fixed';
+        printIframe.style.right = '0';
+        printIframe.style.bottom = '0';
+        printIframe.style.width = '0';
+        printIframe.style.height = '0';
+        printIframe.style.border = '0';
+        document.body.appendChild(printIframe);
+      }
+
+      const framePrintSize = session?.frame?.print_size || '2x6';
+      const pageSizeCss = framePrintSize === '4x6' ? '4in 6in portrait' : '2in 6in portrait';
+
+      const iframeDoc = printIframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Reprint Photo Strip</title>
+            <style>
+              @page {
+                size: ${pageSizeCss};
+                margin: 0;
+              }
+              html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: white;
+              }
+              img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                display: block;
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${compositeUrl}" onload="setTimeout(() => { window.focus(); window.print(); }, 250);" />
+          </body>
+        </html>
+      `);
+      iframeDoc.close();
+    } catch (err) {
+      console.warn('Iframe reprint error, fallback to window.open:', err);
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.write(`
+          <html>
+            <head><title>Print Photo Strip</title></head>
+            <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
+              <img src="${compositeUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" onload="window.print();" />
+            </body>
+          </html>
+        `);
+        printWin.document.close();
+      }
+    }
   };
 
   return (

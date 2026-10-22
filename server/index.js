@@ -55,20 +55,33 @@ try {
   await connectMongo(ENV.MONGO_URI);
   await seedAdmin();
 } catch (err) {
-  console.error('❌ Could not start auth database. Is MongoDB running? (docker compose up -d)\n', err.message);
-  process.exit(1);
+  console.warn('⚠️ Could not connect to MongoDB (app will still run):', err.message);
 }
 
-import { createServer } from 'https';
+import { createServer as createHttpsServer } from 'https';
+import { createServer as createHttpServer } from 'http';
 import { initSocket } from './socket.js';
 import { getTlsCertificates } from './config/https.js';
 
 const tlsConfig = await getTlsCertificates(PATHS.DATA_DIR);
-const server = createServer(tlsConfig, app);
-initSocket(server);
+const httpsServer = createHttpsServer(tlsConfig, app);
+const httpServer = createHttpServer(app);
 
-server.listen(PORT, '0.0.0.0', () => {
+// Initialize socket on both servers
+initSocket(httpsServer);
+initSocket(httpServer);
+
+const HTTP_PORT = process.env.HTTP_PORT || 3002;
+
+httpsServer.listen(PORT, '0.0.0.0', () => {
   const localIp = getLocalIpAddress();
-  console.log(`✨ CIPUTBOOTH Server running on https://localhost:${PORT}`);
-  console.log(`📱 Mobile QR access available at https://${localIp}:${PORT}`);
+  console.log(`✨ CIPUTBOOTH HTTPS Server running on https://localhost:${PORT}`);
+  console.log(`📱 iPad camera access available at https://${localIp}:${PORT}`);
 });
+
+httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+  const localIp = getLocalIpAddress();
+  console.log(`✨ CIPUTBOOTH HTTP Server running on http://localhost:${HTTP_PORT}`);
+  console.log(`📱 Mobile QR & download available at http://${localIp}:${HTTP_PORT}`);
+});
+

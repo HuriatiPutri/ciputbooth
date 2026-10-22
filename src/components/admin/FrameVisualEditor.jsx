@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, Eye, EyeOff, Save, X, Sparkles, Layers, Upload } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, Save, X, Sparkles, Layers, Upload, Copy } from 'lucide-react';
 import { generateMockPhoto } from '../../utils/canvasRenderer';
 import { Button } from '../common';
 
@@ -16,8 +16,8 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
     frame?.photo_slots && frame.photo_slots.length > 0
       ? frame.photo_slots
       : [
-        { order: 1, x: 80, y: 80, width: 480, height: 600 },
-        { order: 2, x: 640, y: 80, width: 480, height: 600 }
+        { order: 1, photo_index: 1, x: 80, y: 80, width: 480, height: 600 },
+        { order: 2, photo_index: 2, x: 640, y: 80, width: 480, height: 600 }
       ]
   );
 
@@ -57,6 +57,7 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
     const newOrder = photoSlots.length + 1;
     const newSlot = {
       order: newOrder,
+      photo_index: newOrder,
       x: 100,
       y: 100 + (photoSlots.length * 120) % (height - 400),
       width: Math.min(500, width - 200),
@@ -64,6 +65,23 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
     };
     setPhotoSlots([...photoSlots, newSlot]);
     setSelectedSlotIndex(photoSlots.length);
+  };
+
+  // Duplicate current selected slot
+  const handleDuplicateSlot = (index) => {
+    const sourceSlot = photoSlots[index];
+    if (!sourceSlot) return;
+    const newOrder = photoSlots.length + 1;
+    const newSlot = {
+      ...sourceSlot,
+      order: newOrder,
+      photo_index: sourceSlot.photo_index || sourceSlot.order || (index + 1),
+      x: Math.min(width - sourceSlot.width, sourceSlot.x + 40),
+      y: Math.min(height - sourceSlot.height, sourceSlot.y + 40)
+    };
+    const updated = [...photoSlots, newSlot];
+    setPhotoSlots(updated);
+    setSelectedSlotIndex(updated.length - 1);
   };
 
   // Delete slot
@@ -88,27 +106,41 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
       setHeight(1800);
       setPrintSize('2x6');
       setPhotoSlots([
-        { order: 1, x: 50, y: 80, width: 500, height: 380 },
-        { order: 2, x: 50, y: 500, width: 500, height: 380 },
-        { order: 3, x: 50, y: 920, width: 500, height: 380 }
+        { order: 1, photo_index: 1, x: 50, y: 80, width: 500, height: 380 },
+        { order: 2, photo_index: 2, x: 50, y: 500, width: 500, height: 380 },
+        { order: 3, photo_index: 3, x: 50, y: 920, width: 500, height: 380 }
+      ]);
+    } else if (type === '3-double') {
+      setWidth(1200);
+      setHeight(1800);
+      setPrintSize('4x6');
+      setPhotoSlots([
+        // Left column: Snaps 1, 2, 3
+        { order: 1, photo_index: 1, x: 60, y: 80, width: 500, height: 420 },
+        { order: 2, photo_index: 2, x: 60, y: 560, width: 500, height: 420 },
+        { order: 3, photo_index: 3, x: 60, y: 1040, width: 500, height: 420 },
+        // Right column: Duplicate Snaps 1, 2, 3
+        { order: 4, photo_index: 1, x: 640, y: 80, width: 500, height: 420 },
+        { order: 5, photo_index: 2, x: 640, y: 560, width: 500, height: 420 },
+        { order: 6, photo_index: 3, x: 640, y: 1040, width: 500, height: 420 }
       ]);
     } else if (type === '4-grid') {
       setWidth(1200);
       setHeight(1800);
       setPrintSize('4x6');
       setPhotoSlots([
-        { order: 1, x: 80, y: 80, width: 490, height: 600 },
-        { order: 2, x: 630, y: 80, width: 490, height: 600 },
-        { order: 3, x: 80, y: 720, width: 490, height: 600 },
-        { order: 4, x: 630, y: 720, width: 490, height: 600 }
+        { order: 1, photo_index: 1, x: 80, y: 80, width: 490, height: 600 },
+        { order: 2, photo_index: 2, x: 630, y: 80, width: 490, height: 600 },
+        { order: 3, photo_index: 3, x: 80, y: 720, width: 490, height: 600 },
+        { order: 4, photo_index: 4, x: 630, y: 720, width: 490, height: 600 }
       ]);
     } else if (type === '2-duo') {
       setWidth(1200);
       setHeight(1800);
       setPrintSize('4x6');
       setPhotoSlots([
-        { order: 1, x: 100, y: 120, width: 1000, height: 680 },
-        { order: 2, x: 100, y: 860, width: 1000, height: 680 }
+        { order: 1, photo_index: 1, x: 100, y: 120, width: 1000, height: 680 },
+        { order: 2, photo_index: 2, x: 100, y: 860, width: 1000, height: 680 }
       ]);
     }
   };
@@ -273,18 +305,28 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
           <div className="absolute top-6 left-6 z-20 flex items-center gap-2.5 bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl border border-white/15 shadow-2xl">
             <span className="text-xs font-bold text-slate-400 px-3">Presets:</span>
             <button
+              type="button"
               onClick={() => applyPresetLayout('3-strip')}
               className="text-xs sm:text-sm font-bold px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white cursor-pointer transition"
             >
               2x6 (3-Strip)
             </button>
             <button
+              type="button"
+              onClick={() => applyPresetLayout('3-double')}
+              className="text-xs sm:text-sm font-bold px-6 py-2.5 rounded-xl bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 cursor-pointer transition shadow-lg"
+            >
+              4x6 (2x3 Double)
+            </button>
+            <button
+              type="button"
               onClick={() => applyPresetLayout('4-grid')}
               className="text-xs sm:text-sm font-bold px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white cursor-pointer transition"
             >
               4x6 (4-Grid)
             </button>
             <button
+              type="button"
               onClick={() => applyPresetLayout('2-duo')}
               className="text-xs sm:text-sm font-bold px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white cursor-pointer transition"
             >
@@ -311,6 +353,8 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
               const relW = (slot.width / width) * 100;
               const relH = (slot.height / height) * 100;
 
+              const targetPhotoNum = slot.photo_index || slot.order || idx + 1;
+
               return (
                 <div
                   key={idx}
@@ -327,19 +371,20 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
                   {/* Dummy Portrait Image or Colorful Slot Background */}
                   {showDummyPreview ? (
                     <img
-                      src={generateMockPhoto(slot.order || idx + 1)}
+                      src={generateMockPhoto(targetPhotoNum)}
                       alt={`Slot ${slot.order}`}
                       className="w-full h-full object-cover pointer-events-none"
                     />
                   ) : (
                     <div className="w-full h-full bg-violet-600/40 flex items-center justify-center text-white font-bold text-xs">
-                      Slot #{slot.order || idx + 1}
+                      Slot #{slot.order || idx + 1} (Foto #{targetPhotoNum})
                     </div>
                   )}
 
                   {/* Slot Order Badge */}
-                  <div className="absolute top-2 left-2 bg-pink-600 text-white font-black text-xs px-2.5 py-1 rounded shadow-lg">
-                    #{slot.order || idx + 1}
+                  <div className="absolute top-2 left-2 bg-pink-600 text-white font-black text-xs px-2.5 py-1 rounded shadow-lg flex items-center gap-1.5">
+                    <span>#{slot.order || idx + 1}</span>
+                    <span className="opacity-90 font-bold text-[10px] bg-black/30 px-1 py-0.5 rounded">📷 Foto {targetPhotoNum}</span>
                   </div>
 
                   {/* Resize Handles (Corners) for Selected Slot */}
@@ -465,34 +510,69 @@ export default function FrameVisualEditor({ frame, onSave, onCancel }) {
                   key={idx}
                   type="button"
                   onClick={() => setSelectedSlotIndex(idx)}
-                  className={`px-6 py-3 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 cursor-pointer ${selectedSlotIndex === idx
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${selectedSlotIndex === idx
                     ? 'bg-pink-500 text-white shadow-xl'
                     : 'bg-slate-900 text-slate-400 border border-white/10 hover:text-white hover:bg-slate-800'
                     }`}
-                  style={{ padding: '4px 8px' }}
                 >
                   <span>Slot #{slot.order || idx + 1}</span>
+                  <span className="text-[10px] opacity-75 font-mono">📷#{slot.photo_index || slot.order || idx + 1}</span>
                 </button>
               ))}
             </div>
 
             {/* Selected Slot Coordinate Inputs */}
             {selectedSlot && (
-              <div className="space-y-4 bg-slate-900/90 p-5 rounded-2xl border border-white/15 shadow-inner" style={{ padding: '8px' }}>
+              <div className="space-y-4 bg-slate-900/90 p-5 rounded-2xl border border-white/15 shadow-inner">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <span className="text-xs font-black text-pink-300">
-                    Slot #{selectedSlot.order || selectedSlotIndex + 1} Coordinates:
+                    Slot #{selectedSlot.order || selectedSlotIndex + 1} Settings:
                   </span>
-                  {photoSlots.length > 1 && (
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleDeleteSlot(selectedSlotIndex)}
-                      className="text-rose-400 hover:text-rose-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      onClick={() => handleDuplicateSlot(selectedSlotIndex)}
+                      className="px-2.5 py-1 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/40 text-violet-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow"
+                      title="Duplicate slot position and properties"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Remove</span>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Duplicate</span>
                     </button>
-                  )}
+                    {photoSlots.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSlot(selectedSlotIndex)}
+                        className="text-rose-400 hover:text-rose-300 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Remove</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Photo Target / Capture Index Mapping */}
+                <div className="bg-slate-950/70 p-3 rounded-xl border border-violet-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-violet-300">
+                      Assigned Photo (Foto Ke-):
+                    </label>
+                    <span className="text-[10px] text-slate-400">Capture Shot</span>
+                  </div>
+                  <select
+                    value={selectedSlot.photo_index || selectedSlot.order || selectedSlotIndex + 1}
+                    onChange={(e) => handleSlotChange(selectedSlotIndex, 'photo_index', e.target.value)}
+                    className="w-full bg-slate-900 border border-violet-500/50 px-3 py-2 rounded-xl text-xs font-bold text-white outline-none focus:border-pink-500 cursor-pointer shadow-inner"
+                  >
+                    {Array.from({ length: Math.max(photoSlots.length, 6) }).map((_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        Foto #{i + 1} {i + 1 <= 3 ? `(Shot ${i + 1})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 leading-tight">
+                    Tentukan foto ke berapa yang masuk ke slot ini. Contoh: duplikat slot dan pilih foto yang sama agar Foto 3 kali bisa muncul di 6 slot template.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

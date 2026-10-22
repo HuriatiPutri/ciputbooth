@@ -3,7 +3,10 @@
  */
 export function renderSharePage(session) {
   const imageUrl = session.composite_url;
+  const liveUrl = session.live_photo_url;
+  const gifUrl = session.gif_url;
   const photos = Array.isArray(session.photos) ? session.photos : [];
+  const liveClips = Array.isArray(session.live_clips) ? session.live_clips : [];
 
   const rawPhotosHtml = photos.length > 0 ? `
     <div class="section-title">
@@ -25,12 +28,37 @@ export function renderSharePage(session) {
     </div>
   ` : '';
 
+  const liveExt = liveUrl && (liveUrl.includes('.mp4') || liveUrl.includes('mp4')) ? 'mp4' : 'webm';
+
+  const liveClipsHtml = liveClips.length > 0 ? `
+    <div class="section-title">
+      <h3>🎬 Live Motion Clips (${liveClips.length})</h3>
+      <p>Behind-the-scenes movement recorded before each snap</p>
+    </div>
+    <div class="shots-grid">
+      ${liveClips.map((clipUrl, idx) => {
+        const clipExt = clipUrl.includes('.mp4') ? 'mp4' : 'webm';
+        return `
+        <div class="shot-card">
+          <div class="shot-img-wrap">
+            <video src="${clipUrl}" autoplay loop muted playsinline class="shot-img"></video>
+            <span class="shot-tag" style="color: #a855f7;">Live #${idx + 1}</span>
+          </div>
+          <a href="${clipUrl}" download="ciputbooth-${session.id}-live-clip-${idx + 1}.${clipExt}" class="btn-shot-download">
+            ⬇️ Clip #${idx + 1}
+          </a>
+        </div>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CIPUTBOOTH - Digital Photos</title>
+    <title>CIPUTBOOTH - Digital Photos & Live Picture</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
       body { background: #020617; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px; }
@@ -39,9 +67,10 @@ export function renderSharePage(session) {
       h1 { font-size: 26px; font-weight: 900; background: linear-gradient(to right, #c084fc, #f472b6, #fde047); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
       p.subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 18px; }
       .image-wrap { background: #020617; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 12px; margin-bottom: 16px; max-height: 52vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-      img.photo { max-width: 100%; max-height: 48vh; object-fit: contain; border-radius: 12px; }
+      img.photo, video.photo { max-width: 100%; max-height: 48vh; object-fit: contain; border-radius: 12px; }
       .btn-download { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 16px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: white; text-decoration: none; border-radius: 18px; font-weight: 900; font-size: 15px; box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.4); transition: transform 0.2s; cursor: pointer; border: none; }
       .btn-download:active { transform: scale(0.98); }
+      .btn-live-download { background: linear-gradient(135deg, #ec4899, #8b5cf6); box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5); }
       .btn-secondary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; margin-top: 10px; cursor: pointer; transition: background 0.2s; }
       .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
       .hint { font-size: 11px; color: #64748b; margin-top: 14px; line-height: 1.5; }
@@ -60,36 +89,73 @@ export function renderSharePage(session) {
   </head>
   <body>
     <div class="container">
-      <div class="badge">📸 Softcopy Ready</div>
+      <div class="badge">📸 Softcopy & Live Picture Ready</div>
       <h1>CIPUTBOOTH</h1>
       <p class="subtitle">Thank you for snapping memories with us!</p>
       
-      <!-- Main Framed Strip -->
-      <div class="image-wrap">
-        <img src="${imageUrl}" alt="Photo Strip" class="photo" />
+      <!-- Live Motion Picture (if available) -->
+      ${liveUrl ? `
+        <div style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-size: 13px; font-weight: 800; color: #f472b6;">✨ Live Motion Picture</span>
+            <span style="font-size: 11px; background: rgba(244,114,182,0.2); color: #f472b6; padding: 2px 8px; border-radius: 999px; font-weight: bold;">Looping Video</span>
+          </div>
+          <div class="image-wrap">
+            <video src="${liveUrl}" autoplay loop muted playsinline class="photo"></video>
+          </div>
+          <a href="${liveUrl}" download="ciputbooth-${session.id}-live.${liveExt}" class="btn-download btn-live-download">
+            🎬 Download Live Picture (Video)
+          </a>
+        </div>
+      ` : ''}
+
+      <!-- Main Framed Strip (Regular Still Picture) -->
+      <div style="margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 13px; font-weight: 800; color: #c084fc;">📷 Regular Photo Strip</span>
+          <span style="font-size: 11px; background: rgba(192,132,252,0.2); color: #c084fc; padding: 2px 8px; border-radius: 999px; font-weight: bold;">High-Res Still</span>
+        </div>
+        <div class="image-wrap">
+          <img src="${imageUrl}" alt="Photo Strip" class="photo" />
+        </div>
+        <a href="${imageUrl}" download="ciputbooth-${session.id}-framed.png" class="btn-download">
+          ⬇️ Download Photo Strip (PNG)
+        </a>
       </div>
 
-      <a href="${imageUrl}" download="ciputbooth-${session.id}-framed.png" class="btn-download">
-        ⬇️ Download Framed Photo Strip
-      </a>
+      <!-- Animation GIF (if available) -->
+      ${gifUrl ? `
+        <div class="image-wrap">
+          <img src="${gifUrl}" alt="Photo Animation" class="photo" />
+        </div>
+        <a href="${gifUrl}" download="ciputbooth-${session.id}-animation.gif" class="btn-download" style="background: linear-gradient(135deg, #10b981, #3b82f6); margin-bottom: 12px;">
+          ⬇️ Download Animation (GIF)
+        </a>
+      ` : ''}
 
-      ${photos.length > 0 ? `
+      ${(photos.length > 0 || liveClips.length > 0) ? `
         <button onclick="downloadAllPhotos()" class="btn-secondary">
-          📦 Download All Photos (${photos.length + 1} Files)
+          📦 Download All Media Files
         </button>
       ` : ''}
       
       <!-- Individual Camera Shots -->
       ${rawPhotosHtml}
 
-      <p class="hint">💡 Tip: You can tap & hold any photo and select <strong>Save to Photos</strong>.</p>
+      <!-- Individual Live Movement Clips -->
+      ${liveClipsHtml}
+
+      <p class="hint">💡 Tip: You can tap & hold any video or photo and select <strong>Save Video / Save Image</strong>.</p>
     </div>
 
     <script>
       function downloadAllPhotos() {
         const urls = [
           { url: '${imageUrl}', name: 'ciputbooth-${session.id}-framed.png' },
-          ${photos.map((p, idx) => `{ url: '${p}', name: 'ciputbooth-${session.id}-shot-${idx + 1}.png' }`).join(',\n          ')}
+          ${liveUrl ? `{ url: '${liveUrl}', name: 'ciputbooth-${session.id}-live.webm' },` : ''}
+          ${gifUrl ? `{ url: '${gifUrl}', name: 'ciputbooth-${session.id}-animation.gif' },` : ''}
+          ${photos.map((p, idx) => `{ url: '${p}', name: 'ciputbooth-${session.id}-shot-${idx + 1}.png' }`).join(',\n          ')}${photos.length > 0 && liveClips.length > 0 ? ',' : ''}
+          ${liveClips.map((c, idx) => `{ url: '${c}', name: 'ciputbooth-${session.id}-live-clip-${idx + 1}.webm' }`).join(',\n          ')}
         ];
 
         urls.forEach((item, index) => {
