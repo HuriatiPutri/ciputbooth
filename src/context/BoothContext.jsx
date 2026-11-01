@@ -44,7 +44,7 @@ export function BoothProvider({ children }) {
   const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
   const [filterId, setFilterId] = useState('normal');
   const [stickers, setStickers] = useState([]);
-  const [customText, setCustomText] = useState('STUDIO CIPUT');
+  const [customText, setCustomText] = useState('');
   const [compositeUrl, setCompositeUrl] = useState('');
   const [liveCompositeUrl, setLiveCompositeUrl] = useState('');
   const [previewMode, setPreviewMode] = useState('photo'); // 'photo' | 'live'
@@ -71,9 +71,6 @@ export function BoothProvider({ children }) {
       const data = await res.json();
       if (data.success && data.data) {
         setSettings((prev) => ({ ...prev, ...data.data }));
-        if (data.data.studioName) {
-          setCustomText(data.data.studioName.toUpperCase());
-        }
       }
     } catch (err) {
       console.warn('Failed to load settings:', err);
@@ -132,11 +129,15 @@ export function BoothProvider({ children }) {
         setActiveEvent(eventData);
         setFrames(eventData.frames);
         
+        if (eventData.frames && eventData.frames.length === 1) {
+          setSelectedFrame(eventData.frames[0]);
+        } else if (eventData.photo_flow === 'default_frame' && eventData.default_frame_id) {
+          const defFrame = eventData.frames?.find((f) => f.id === eventData.default_frame_id) || eventData.frames?.[0];
+          if (defFrame) setSelectedFrame(defFrame);
+        }
+
         if (eventData.settings) {
           setSettings((prev) => ({ ...prev, ...eventData.settings }));
-          if (eventData.settings.studioName) {
-            setCustomText(eventData.settings.studioName.toUpperCase());
-          }
         }
 
         // Handle Midtrans redirect logic
@@ -217,10 +218,17 @@ export function BoothProvider({ children }) {
     setSavedSessionData(null);
     fetchActiveFrames();
 
+    const eventFrames = activeEvent?.frames || frames || [];
+    const isSingleFrame = eventFrames.length === 1 || activeEvent?.photo_flow === 'default_frame';
+    const frameToUse = (activeEvent?.default_frame_id ? eventFrames.find((f) => f.id === activeEvent.default_frame_id) : null) || eventFrames[0];
+
+    if (isSingleFrame && frameToUse) {
+      setSelectedFrame(frameToUse);
+    }
+
     if (activeEvent?.payment_type === 'paid') {
       setStep('payment_required');
-    } else if (activeEvent?.photo_flow === 'default_frame') {
-      setSelectedFrame(activeEvent.frames[0]);
+    } else if (isSingleFrame && frameToUse) {
       setStep('booth_capture');
     } else {
       setStep('frame_select');
@@ -341,9 +349,9 @@ export function BoothProvider({ children }) {
 
       setCompositeUrl(finalImageBase64);
 
-      // 2. Generate live motion composite video if live clips exist
+      // 2. Generate live motion composite video if live picture is enabled and live clips exist
       let liveCompositeBase64 = '';
-      if (capturedLiveClips && capturedLiveClips.length > 0) {
+      if (isLivePictureEnabled && capturedLiveClips && capturedLiveClips.length > 0) {
         try {
           liveCompositeBase64 = await generateLiveCompositeVideo({
             frame: selectedFrame,
@@ -369,9 +377,9 @@ export function BoothProvider({ children }) {
             frame_id: selectedFrame.id,
             frame_name: selectedFrame.name,
             composite_base64: finalImageBase64,
-            live_composite_base64: liveCompositeBase64,
+            live_composite_base64: isLivePictureEnabled ? liveCompositeBase64 : null,
             photos: capturedPhotos,
-            live_clips: capturedLiveClips,
+            live_clips: isLivePictureEnabled ? capturedLiveClips : [],
             filter_applied: filterId,
             copies: 1,
             order_id: paymentOrderId
@@ -407,6 +415,7 @@ export function BoothProvider({ children }) {
     setCapturedLiveClips([]);
     setCurrentSlotIndex(0);
     setStickers([]);
+    setCustomText('');
     setCompositeUrl('');
     setLiveCompositeUrl('');
     setPreviewMode('photo');
@@ -414,12 +423,15 @@ export function BoothProvider({ children }) {
     setSavedSessionData(null);
   }, [setStep]);
 
+  const isLivePictureEnabled = activeEvent ? activeEvent.enable_live_picture !== false : true;
+
   return (
     <BoothContext.Provider
       value={{
         step,
         setStep,
         activeEvent,
+        isLivePictureEnabled,
         eventError,
         frames,
         fetchActiveFrames,

@@ -23,6 +23,10 @@ export default defineConfig({
         target: 'https://localhost:3001',
         changeOrigin: true,
         secure: false,
+      },
+      '/share': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
       }
     }
   }

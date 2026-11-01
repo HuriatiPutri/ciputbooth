@@ -8,7 +8,8 @@ const eventSchema = new mongoose.Schema(
     price_per_photo: { type: Number, default: 0, min: 0 },
     photo_flow: { type: String, enum: ['choose_frame', 'default_frame'], default: 'choose_frame', required: true },
     available_frames: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Frame', default: [] }],
-    default_frame_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Frame', default: null }
+    default_frame_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Frame', default: null },
+    enable_live_picture: { type: Boolean, default: true }
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'events' }
 );

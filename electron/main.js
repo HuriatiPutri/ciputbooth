@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import net from 'net';
 import { fileURLToPath } from 'url';
+import { registerPrinterIPC } from './printer/printer-ipc.js';
 
 // Allow Electron to load self-signed certificates
 app.commandLine.appendSwitch('ignore-certificate-errors', 'true');
@@ -77,8 +78,11 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.cjs')
     }
   });
+
+  registerPrinterIPC(mainWindow);
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5174');

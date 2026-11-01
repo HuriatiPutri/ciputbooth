@@ -1,12 +1,22 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Check, Sparkles, Layers, Image as ImageIcon } from 'lucide-react';
 import { useBooth } from '../../context/BoothContext';
 import { AmbientBackground, Badge, TabGroup, Button } from '../common';
 
 export default function FrameSelectScreen() {
-  const { frames, selectedFrame, chooseFrame, confirmFrame, isLoading, settings } = useBooth();
+  const { frames, selectedFrame, chooseFrame, confirmFrame, isLoading, settings, activeEvent, setStep } = useBooth();
   const [filterSize, setFilterSize] = useState(settings?.printLayout || 'all'); // all | 2x6 | 4x6
   const carouselRef = useRef(null);
+
+  // If there is only 1 frame available, auto-select it and skip straight to capture
+  useEffect(() => {
+    const eventFrames = activeEvent?.frames || frames || [];
+    const isSingleFrame = eventFrames.length === 1 || activeEvent?.photo_flow === 'default_frame';
+    if (!isLoading && isSingleFrame && eventFrames.length === 1) {
+      chooseFrame(eventFrames[0]);
+      setStep('booth_capture');
+    }
+  }, [isLoading, activeEvent, frames, chooseFrame, setStep]);
 
   const filterTabs = [
     { id: 'all', label: `All Frames (${frames.length})` },
@@ -39,7 +49,7 @@ export default function FrameSelectScreen() {
         <Badge variant="violet" icon={Layers} className="mb-1 text-[11px] py-0.5 px-3">
           Step 1 of 3: Frame Selection
         </Badge>
-        <h2 className="font-display font-black text-xl sm:text-3xl text-white tracking-tight mb-1">
+        <h2 className="font-display font-black text-lg sm:text-2xl md:text-3xl text-white tracking-tight mb-1">
           Choose Your Photo Frame
         </h2>
         <p className="text-slate-400 text-[11px] sm:text-xs max-w-md mb-2">
@@ -97,7 +107,7 @@ export default function FrameSelectScreen() {
                       ? 'scale-105 ring-4 ring-pink-500 shadow-2xl shadow-pink-500/40 rounded-3xl'
                       : 'scale-95 opacity-75 hover:opacity-100 hover:scale-100'
                       }`}
-                    style={{ width: frame.print_size === '2x6' ? '250px' : '290px' }}
+                    style={{ width: frame.print_size === '2x6' ? 'min(250px, 42vw)' : 'min(290px, 48vw)' }}
                   >
                     {/* Frame Visual Card with generous padding */}
                     <div className="relative rounded-3xl overflow-hidden glass-panel border border-white/20 p-6 flex flex-col items-center bg-slate-950/95 shadow-2xl">
@@ -113,7 +123,7 @@ export default function FrameSelectScreen() {
                         className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-white/15 flex items-center justify-center p-3 shadow-inner"
                         style={{
                           aspectRatio: frame.width && frame.height ? `${frame.width}/${frame.height}` : '2/3',
-                          maxHeight: '38vh'
+                          maxHeight: '32vh'
                         }}
                       >
                         {/* Checkerboard transparency pattern */}

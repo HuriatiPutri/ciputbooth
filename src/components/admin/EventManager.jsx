@@ -10,7 +10,8 @@ const EMPTY_FORM = {
   price_per_photo: '',
   photo_flow: 'choose_frame',
   available_frames: [],
-  default_frame_id: ''
+  default_frame_id: '',
+  enable_live_picture: true
 };
 
 const FIELD_CLASS =
@@ -92,7 +93,8 @@ export default function EventManager() {
       price_per_photo: event.price_per_photo || '',
       photo_flow: event.photo_flow,
       available_frames: event.available_frames,
-      default_frame_id: event.default_frame_id || ''
+      default_frame_id: event.default_frame_id || '',
+      enable_live_picture: event.enable_live_picture !== false
     });
   };
 
@@ -182,15 +184,20 @@ export default function EventManager() {
                     {isAdmin && ` · owner ${event.user_id.slice(-6)}`}
                   </p>
                 </div>
-                {event.payment_type === 'paid' ? (
-                  <Badge variant="violet" size="sm" icon={Wallet}>
-                    {formatRupiah(event.price_per_photo)}
+                <div className="flex items-center gap-2">
+                  <Badge variant={event.enable_live_picture !== false ? 'pink' : 'gray'} size="sm">
+                    {event.enable_live_picture !== false ? 'Live Picture ✨' : 'Photo Only 📷'}
                   </Badge>
-                ) : (
-                  <Badge variant="violet" size="sm" icon={Gift}>
-                    Free
-                  </Badge>
-                )}
+                  {event.payment_type === 'paid' ? (
+                    <Badge variant="violet" size="sm" icon={Wallet}>
+                      {formatRupiah(event.price_per_photo)}
+                    </Badge>
+                  ) : (
+                    <Badge variant="violet" size="sm" icon={Gift}>
+                      Free
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               <p className="text-xs text-slate-300">
@@ -270,6 +277,16 @@ export default function EventManager() {
               options={[
                 { value: 'choose_frame', title: 'Choose frame', hint: 'Guests pick from selected frames' },
                 { value: 'default_frame', title: 'Quick (default)', hint: 'Straight to camera with one frame' }
+              ]}
+            />
+
+            <OptionGroup
+              label="Live Picture Feature"
+              value={form.enable_live_picture ? 'enabled' : 'disabled'}
+              onChange={(val) => update({ enable_live_picture: val === 'enabled' })}
+              options={[
+                { value: 'enabled', title: 'Enable Live Picture ✨', hint: 'Short video loops on preview & softcopy' },
+                { value: 'disabled', title: 'Photo Strip Only 📷', hint: 'Standard photos only, no live video' }
               ]}
             />
 

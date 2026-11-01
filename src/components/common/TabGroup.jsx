@@ -40,7 +40,6 @@ export default function TabGroup({
                 ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white shadow-xl shadow-pink-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
               } ${buttonClassName}`}
-            style={{ padding: '8px' }}
           >
             {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
             <span>{tab.label}</span>

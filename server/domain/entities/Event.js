@@ -13,6 +13,7 @@ export class Event {
     photoFlow = PHOTO_FLOWS.CHOOSE_FRAME,
     availableFrames = [],
     defaultFrameId = null,
+    enableLivePicture = true,
     createdAt = null
   }) {
     this.id = id;
@@ -23,6 +24,7 @@ export class Event {
     this.photoFlow = photoFlow;
     this.availableFrames = availableFrames;
     this.defaultFrameId = defaultFrameId;
+    this.enableLivePicture = enableLivePicture !== false;
     this.createdAt = createdAt;
   }
 
@@ -53,7 +55,9 @@ export class Event {
       if (availableFrames.length === 0) throw new ValidationError('Select at least one available frame');
     }
 
-    return { eventName, paymentType, pricePerPhoto, photoFlow, availableFrames, defaultFrameId };
+    const enableLivePicture = input.enable_live_picture !== undefined ? Boolean(input.enable_live_picture) : true;
+
+    return { eventName, paymentType, pricePerPhoto, photoFlow, availableFrames, defaultFrameId, enableLivePicture };
   }
 
   /** Frame ids that the event depends on, whichever flow is used. */
@@ -75,6 +79,7 @@ export class Event {
       photo_flow: this.photoFlow,
       available_frames: this.availableFrames,
       default_frame_id: this.defaultFrameId,
+      enable_live_picture: this.enableLivePicture,
       created_at: this.createdAt
     };
   }

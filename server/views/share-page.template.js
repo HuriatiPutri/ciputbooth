@@ -1,195 +1,417 @@
 /**
- * Generates the responsive HTML page for mobile users downloading their softcopy
+ * Secure Customer Photo Sharing Page (Mobile Responsive, Dark Mode)
+ * Serves media exclusively through authorized proxy endpoints with zero credential exposure.
  */
-export function renderSharePage(session) {
-  const imageUrl = session.composite_url;
-  const liveUrl = session.live_photo_url;
-  const gifUrl = session.gif_url;
+export function renderSharePage(session, tokenDoc, token) {
+  const hasComposite = Boolean(session.composite_url || session.photo_url);
+  const hasLive = Boolean(session.live_photo_url);
+  const hasGif = Boolean(session.gif_url);
   const photos = Array.isArray(session.photos) ? session.photos : [];
   const liveClips = Array.isArray(session.live_clips) ? session.live_clips : [];
 
-  const rawPhotosHtml = photos.length > 0 ? `
-    <div class="section-title">
-      <h3>📷 Individual Camera Shots (${photos.length})</h3>
-      <p>Original high-resolution photos taken in the booth</p>
-    </div>
-    <div class="shots-grid">
-      ${photos.map((photoUrl, idx) => `
-        <div class="shot-card">
-          <div class="shot-img-wrap">
-            <img src="${photoUrl}" alt="Shot ${idx + 1}" class="shot-img" />
-            <span class="shot-tag">#${idx + 1}</span>
-          </div>
-          <a href="${photoUrl}" download="ciputbooth-${session.id}-shot-${idx + 1}.png" class="btn-shot-download">
-            ⬇️ Shot #${idx + 1}
-          </a>
-        </div>
-      `).join('')}
-    </div>
-  ` : '';
+  // Expiration calculation
+  let expiryText = 'Valid session';
+  if (tokenDoc?.expires_at) {
+    const diffMs = new Date(tokenDoc.expires_at) - new Date();
+    const diffHours = Math.max(1, Math.round(diffMs / (1000 * 60 * 60)));
+    if (diffHours < 24) {
+      expiryText = `Link expires in ~${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+    } else {
+      const diffDays = Math.round(diffHours / 24);
+      expiryText = `Link expires in ~${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    }
+  }
 
-  const liveExt = liveUrl && (liveUrl.includes('.mp4') || liveUrl.includes('mp4')) ? 'mp4' : 'webm';
+  const isDriveSynced = session.drive_upload_status === 'success';
 
-  const liveClipsHtml = liveClips.length > 0 ? `
-    <div class="section-title">
-      <h3>🎬 Live Motion Clips (${liveClips.length})</h3>
-      <p>Behind-the-scenes movement recorded before each snap</p>
-    </div>
-    <div class="shots-grid">
-      ${liveClips.map((clipUrl, idx) => {
-        const clipExt = clipUrl.includes('.mp4') ? 'mp4' : 'webm';
-        return `
-        <div class="shot-card">
-          <div class="shot-img-wrap">
-            <video src="${clipUrl}" autoplay loop muted playsinline class="shot-img"></video>
-            <span class="shot-tag" style="color: #a855f7;">Live #${idx + 1}</span>
-          </div>
-          <a href="${clipUrl}" download="ciputbooth-${session.id}-live-clip-${idx + 1}.${clipExt}" class="btn-shot-download">
-            ⬇️ Clip #${idx + 1}
-          </a>
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Your Photobooth Memories • Private Gallery</title>
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+      body {
+        background: #090b10;
+        color: #f8fafc;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 14px 40px;
+      }
+      .container {
+        max-width: 480px;
+        width: 100%;
+        background: rgba(18, 24, 38, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 32px;
+        padding: 24px 20px;
+        text-align: center;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+      }
+      .header-badges {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .badge-security {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: #34d399;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border-radius: 9999px;
+      }
+      .badge-expiry {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        color: #fbbf24;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 9999px;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #c084fc 0%, #ec4899 50%, #fde047 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 4px;
+      }
+      p.subtitle {
+        font-size: 13px;
+        color: #94a3b8;
+        margin-bottom: 22px;
+      }
+      .media-frame {
+        background: #020617;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 12px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+      }
+      img.composite-photo, video.composite-video {
+        width: 100%;
+        max-height: 55vh;
+        object-fit: contain;
+        border-radius: 16px;
+        display: block;
+      }
+      .btn-primary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 20px;
+        font-weight: 900;
+        font-size: 15px;
+        letter-spacing: 0.01em;
+        box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.45);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        cursor: pointer;
+      }
+      .btn-primary:active { transform: scale(0.98); }
+      .btn-zip {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #e2e8f0;
+        text-decoration: none;
+        border-radius: 18px;
+        font-weight: 800;
+        font-size: 13px;
+        margin-top: 10px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .btn-zip:active { background: rgba(255, 255, 255, 0.15); }
+      .section-header {
+        text-align: left;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .section-header h3 {
+        font-size: 15px;
+        font-weight: 800;
+        color: #f1f5f9;
+      }
+      .section-header p {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+      .grid-shots {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .card-shot {
+        background: #0b0f19;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .wrap-shot-img {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4/3;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #1e293b;
+      }
+      .wrap-shot-img img, .wrap-shot-img video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .tag-shot {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #f472b6;
+        font-size: 10px;
+        font-weight: 900;
+        padding: 2px 7px;
+        border-radius: 6px;
+        backdrop-filter: blur(4px);
+      }
+      .btn-mini-download {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        color: #f1f5f9;
+        font-size: 11px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .btn-mini-download:active { background: rgba(255, 255, 255, 0.2); }
+      .footer-note {
+        margin-top: 24px;
+        font-size: 11px;
+        color: #64748b;
+        line-height: 1.5;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header-badges">
+        <span class="badge-security">🔒 Private & Secure</span>
+        <span class="badge-expiry">⏳ ${expiryText}</span>
+        ${isDriveSynced ? '<span class="badge-security" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.1);">☁️ Google Drive</span>' : ''}
+      </div>
+
+      <h1>PHOTOBOOTH</h1>
+      <p class="subtitle">Your private digital memories are ready to save!</p>
+
+      <!-- Main Photo Strip / Postcard -->
+      ${hasComposite ? `
+        <div class="media-frame">
+          <img
+            src="/api/share/${token}/stream/composite"
+            alt="Photobooth Strip"
+            class="composite-photo"
+            loading="eager"
+          />
         </div>
-        `;
-      }).join('')}
+        <a href="/api/share/${token}/download/composite" class="btn-primary">
+          <span>⬇️ Download Photo Strip (HD)</span>
+        </a>
+      ` : ''}
+
+      <!-- Live Motion Picture (if available) -->
+      ${hasLive ? `
+        <div class="section-header">
+          <h3>✨ Live Motion Video</h3>
+          <p>Recorded video clip with moving photo memories</p>
+        </div>
+        <div class="media-frame" style="margin-top: 10px;">
+          <video
+            src="/api/share/${token}/stream/live"
+            autoplay
+            loop
+            muted
+            playsinline
+            controls
+            class="composite-video"
+          ></video>
+        </div>
+        <a href="/api/share/${token}/download/live" class="btn-primary" style="background: linear-gradient(135deg, #ec4899, #8b5cf6);">
+          <span>🎬 Download Live Motion Clip</span>
+        </a>
+      ` : ''}
+
+      <!-- Individual Raw Camera Shots -->
+      ${photos.length > 0 ? `
+        <div class="section-header">
+          <h3>📷 Individual Camera Shots (${photos.length})</h3>
+          <p>Original full-resolution camera poses</p>
+        </div>
+        <div class="grid-shots">
+          ${photos.map((_, idx) => `
+            <div class="card-shot">
+              <div class="wrap-shot-img">
+                <img
+                  src="/api/share/${token}/stream/shot/${idx}"
+                  alt="Camera Shot ${idx + 1}"
+                  loading="lazy"
+                />
+                <span class="tag-shot">#${idx + 1}</span>
+              </div>
+              <a href="/api/share/${token}/download/shot/${idx}" class="btn-mini-download">
+                ⬇️ Shot #${idx + 1}
+              </a>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      <!-- Download All in One ZIP -->
+      <a href="/api/share/${token}/download-all" class="btn-zip">
+        <span>📦 Download All Photos (ZIP Archive)</span>
+      </a>
+
+      <p class="footer-note">
+        🔒 This page is encrypted and private to your session.<br />
+        To protect your privacy, this download link will automatically expire.
+      </p>
     </div>
-  ` : '';
+  </body>
+</html>`;
+}
+
+/**
+ * Clean, branded security notice page shown when a token is expired, revoked, or invalid
+ */
+export function renderSecurityNoticePage(reason = 'not_found') {
+  let title = 'Private Session Not Available';
+  let badge = '🔒 Access Notice';
+  let desc = 'The photo link you followed is not available or could not be found.';
+  let icon = '🔒';
+
+  if (reason === 'expired') {
+    title = 'Photo Link Expired';
+    badge = '⏳ Link Expired';
+    icon = '⌛';
+    desc = 'For your privacy and security, this photobooth download link has expired. Please contact the event administrator if you still need to retrieve your photos.';
+  } else if (reason === 'revoked') {
+    title = 'Access Has Been Revoked';
+    badge = '🚫 Link Disabled';
+    icon = '🚫';
+    desc = 'This download link has been disabled or replaced with a new QR code by the administrator.';
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CIPUTBOOTH - Digital Photos & Live Picture</title>
+    <title>${title} • Photobooth Security</title>
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-      body { background: #020617; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px; }
-      .container { max-width: 480px; width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 28px; padding: 24px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6); margin-bottom: 24px; }
-      .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); color: #c4b5fd; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 6px 14px; border-radius: 9999px; margin-bottom: 12px; }
-      h1 { font-size: 26px; font-weight: 900; background: linear-gradient(to right, #c084fc, #f472b6, #fde047); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
-      p.subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 18px; }
-      .image-wrap { background: #020617; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 12px; margin-bottom: 16px; max-height: 52vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-      img.photo, video.photo { max-width: 100%; max-height: 48vh; object-fit: contain; border-radius: 12px; }
-      .btn-download { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 16px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: white; text-decoration: none; border-radius: 18px; font-weight: 900; font-size: 15px; box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.4); transition: transform 0.2s; cursor: pointer; border: none; }
-      .btn-download:active { transform: scale(0.98); }
-      .btn-live-download { background: linear-gradient(135deg, #ec4899, #8b5cf6); box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5); }
-      .btn-secondary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; margin-top: 10px; cursor: pointer; transition: background 0.2s; }
-      .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
-      .hint { font-size: 11px; color: #64748b; margin-top: 14px; line-height: 1.5; }
-
-      .section-title { text-align: left; margin-top: 28px; margin-bottom: 12px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
-      .section-title h3 { font-size: 16px; font-weight: 800; color: #f1f5f9; }
-      .section-title p { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-      .shots-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 12px; }
-      .shot-card { background: #020617; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
-      .shot-img-wrap { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 10px; overflow: hidden; background: #1e293b; }
-      .shot-img { width: 100%; height: 100%; object-fit: cover; }
-      .shot-tag { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: #ec4899; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 6px; }
-      .btn-shot-download { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; color: #e2e8f0; font-size: 12px; font-weight: 700; text-decoration: none; transition: background 0.2s; }
-      .btn-shot-download:hover { background: rgba(255,255,255,0.15); color: #fff; }
+      body {
+        background: #090b10;
+        color: #f8fafc;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        max-width: 420px;
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 28px;
+        padding: 36px 24px;
+        text-align: center;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.7);
+      }
+      .icon-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin: 0 auto 16px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        background: rgba(244, 63, 94, 0.15);
+        color: #fb7185;
+        border: 1px solid rgba(244, 63, 94, 0.3);
+        margin-bottom: 12px;
+      }
+      h2 { font-size: 20px; font-weight: 900; color: #ffffff; margin-bottom: 8px; }
+      p { font-size: 13px; color: #94a3b8; line-height: 1.6; }
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="badge">📸 Softcopy & Live Picture Ready</div>
-      <h1>CIPUTBOOTH</h1>
-      <p class="subtitle">Thank you for snapping memories with us!</p>
-      
-      <!-- Live Motion Picture (if available) -->
-      ${liveUrl ? `
-        <div style="margin-bottom: 24px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-size: 13px; font-weight: 800; color: #f472b6;">✨ Live Motion Picture</span>
-            <span style="font-size: 11px; background: rgba(244,114,182,0.2); color: #f472b6; padding: 2px 8px; border-radius: 999px; font-weight: bold;">Looping Video</span>
-          </div>
-          <div class="image-wrap">
-            <video src="${liveUrl}" autoplay loop muted playsinline class="photo"></video>
-          </div>
-          <a href="${liveUrl}" download="ciputbooth-${session.id}-live.${liveExt}" class="btn-download btn-live-download">
-            🎬 Download Live Picture (Video)
-          </a>
-        </div>
-      ` : ''}
-
-      <!-- Main Framed Strip (Regular Still Picture) -->
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <span style="font-size: 13px; font-weight: 800; color: #c084fc;">📷 Regular Photo Strip</span>
-          <span style="font-size: 11px; background: rgba(192,132,252,0.2); color: #c084fc; padding: 2px 8px; border-radius: 999px; font-weight: bold;">High-Res Still</span>
-        </div>
-        <div class="image-wrap">
-          <img src="${imageUrl}" alt="Photo Strip" class="photo" />
-        </div>
-        <a href="${imageUrl}" download="ciputbooth-${session.id}-framed.png" class="btn-download">
-          ⬇️ Download Photo Strip (PNG)
-        </a>
-      </div>
-
-      <!-- Animation GIF (if available) -->
-      ${gifUrl ? `
-        <div class="image-wrap">
-          <img src="${gifUrl}" alt="Photo Animation" class="photo" />
-        </div>
-        <a href="${gifUrl}" download="ciputbooth-${session.id}-animation.gif" class="btn-download" style="background: linear-gradient(135deg, #10b981, #3b82f6); margin-bottom: 12px;">
-          ⬇️ Download Animation (GIF)
-        </a>
-      ` : ''}
-
-      ${(photos.length > 0 || liveClips.length > 0) ? `
-        <button onclick="downloadAllPhotos()" class="btn-secondary">
-          📦 Download All Media Files
-        </button>
-      ` : ''}
-      
-      <!-- Individual Camera Shots -->
-      ${rawPhotosHtml}
-
-      <!-- Individual Live Movement Clips -->
-      ${liveClipsHtml}
-
-      <p class="hint">💡 Tip: You can tap & hold any video or photo and select <strong>Save Video / Save Image</strong>.</p>
+    <div class="card">
+      <div class="icon-circle">${icon}</div>
+      <span class="badge">${badge}</span>
+      <h2>${title}</h2>
+      <p>${desc}</p>
     </div>
-
-    <script>
-      function downloadAllPhotos() {
-        const urls = [
-          { url: '${imageUrl}', name: 'ciputbooth-${session.id}-framed.png' },
-          ${liveUrl ? `{ url: '${liveUrl}', name: 'ciputbooth-${session.id}-live.webm' },` : ''}
-          ${gifUrl ? `{ url: '${gifUrl}', name: 'ciputbooth-${session.id}-animation.gif' },` : ''}
-          ${photos.map((p, idx) => `{ url: '${p}', name: 'ciputbooth-${session.id}-shot-${idx + 1}.png' }`).join(',\n          ')}${photos.length > 0 && liveClips.length > 0 ? ',' : ''}
-          ${liveClips.map((c, idx) => `{ url: '${c}', name: 'ciputbooth-${session.id}-live-clip-${idx + 1}.webm' }`).join(',\n          ')}
-        ];
-
-        urls.forEach((item, index) => {
-          setTimeout(() => {
-            const a = document.createElement('a');
-            a.href = item.url;
-            a.download = item.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }, index * 400);
-        });
-      }
-    </script>
   </body>
 </html>`;
 }
 
 export function renderNotFoundPage() {
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photo Not Found - CIPUTBOOTH</title>
-    <style>
-      body { font-family: -apple-system, sans-serif; background: #020617; color: #fff; text-align: center; padding: 60px 20px; }
-      h1 { color: #f43f5e; font-size: 24px; margin-bottom: 8px; }
-      p { color: #94a3b8; font-size: 14px; }
-    </style>
-  </head>
-  <body>
-    <h1>Photo Not Found</h1>
-    <p>This photo session may have expired or was removed from the booth.</p>
-  </body>
-</html>`;
+  return renderSecurityNoticePage('not_found');
 }

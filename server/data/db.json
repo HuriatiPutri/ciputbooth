@@ -437,6 +437,241 @@
   ],
   "sessions": [
     {
+      "id": "6ae77f914636da25169d2f4a",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "6ae76eac568a0380554be25f",
+      "frame_id": null,
+      "frame_name": "Vintage Maroon",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/composite.png",
+      "live_photo_url": "",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/shot_3.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/shot_4.jpg"
+      ],
+      "live_clips": [],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/ffec09b4c0b8de2c7d8a2055c59782dc649d5b8f8e32dc0d10f04d5b934c3990",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77f914636da25169d2f4a/animation.gif",
+      "download_live_url": "",
+      "created_at": "2026-11-01T18:06:09.007Z"
+    },
+    {
+      "id": "6ae77e6d75e0e3770068822f",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "6ae76eac568a0380554be25f",
+      "frame_id": null,
+      "frame_name": "Vintage Maroon",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/composite.png",
+      "live_photo_url": "",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/shot_3.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/shot_4.jpg"
+      ],
+      "live_clips": [],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/f5c645bc11c4273665081ba73b90ac67ce61064ebc747ee397e73e477bf86901",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77e6d75e0e3770068822f/animation.gif",
+      "download_live_url": "",
+      "created_at": "2026-11-01T18:01:17.146Z"
+    },
+    {
+      "id": "6ae77d37ce0e2400d22a4e0b",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "6ae76eac568a0380554be25f",
+      "frame_id": null,
+      "frame_name": "Vintage Maroon",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/composite.png",
+      "live_photo_url": "",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/shot_3.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/shot_4.jpg"
+      ],
+      "live_clips": [],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/472a4fb209fa2dfa4c41d9c22ec2de01ee1627bdc6c2aa904933a627a1ae730c",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae77d37ce0e2400d22a4e0b/animation.gif",
+      "download_live_url": "",
+      "created_at": "2026-11-01T17:56:07.700Z"
+    },
+    {
+      "id": "6ae776cbbd62699cfd70a1d2",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "default_event",
+      "frame_id": "6ac0b4fdec7bcff18cc96774",
+      "frame_name": "funny frame",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/composite.png",
+      "live_photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/composite_live.mp4",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/shot_3.jpg"
+      ],
+      "live_clips": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/live_clip_1.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/live_clip_2.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/live_clip_3.mp4"
+      ],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/6ae776cbbd62699cfd70a1d2",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/animation.gif",
+      "download_live_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae776cbbd62699cfd70a1d2/composite_live.mp4",
+      "created_at": "2026-11-01T17:28:43.907Z"
+    },
+    {
+      "id": "6ae7701771b9cde57d338091",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "6ae76eac568a0380554be25f",
+      "frame_id": null,
+      "frame_name": "Vintage Maroon",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/composite.png",
+      "live_photo_url": "",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/shot_3.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/shot_4.jpg"
+      ],
+      "live_clips": [],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/6ae7701771b9cde57d338091",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae7701771b9cde57d338091/animation.gif",
+      "download_live_url": "",
+      "created_at": "2026-11-01T17:00:07.567Z"
+    },
+    {
+      "id": "6ae76eef568a0380554be260",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "6ae76eac568a0380554be25f",
+      "frame_id": null,
+      "frame_name": "Vintage Maroon",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/composite.png",
+      "live_photo_url": "",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/shot_3.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/shot_4.jpg"
+      ],
+      "live_clips": [],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/6ae76eef568a0380554be260",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/6ae76eac568a0380554be25f/sessions/6ae76eef568a0380554be260/animation.gif",
+      "download_live_url": "",
+      "created_at": "2026-11-01T16:55:11.549Z"
+    },
+    {
+      "id": "6ae76d0d70bbe2a22e69f2c3",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "default_event",
+      "frame_id": "6ac0b4fdec7bcff18cc96777",
+      "frame_name": "Vintage Maroon",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/composite.png",
+      "live_photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/composite_live.mp4",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/shot_3.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/shot_4.jpg"
+      ],
+      "live_clips": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/live_clip_1.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/live_clip_2.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/live_clip_3.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/live_clip_4.mp4"
+      ],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/6ae76d0d70bbe2a22e69f2c3",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/animation.gif",
+      "download_live_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae76d0d70bbe2a22e69f2c3/composite_live.mp4",
+      "created_at": "2026-11-01T16:47:09.216Z"
+    },
+    {
+      "id": "6ae769d970bbe2a22e69f2c1",
+      "user_id": "6ac09fa5e736f65b65959a01",
+      "event_id": "default_event",
+      "frame_id": "6ac0b3b21b81bdc13154ab95",
+      "frame_name": "Funny",
+      "composite_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/composite.png",
+      "photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/composite.png",
+      "live_photo_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/composite_live.mp4",
+      "gif_url": "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/animation.gif",
+      "photos": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/shot_1.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/shot_2.jpg",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/shot_3.jpg"
+      ],
+      "live_clips": [
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/live_clip_1.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/live_clip_2.mp4",
+        "/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/live_clip_3.mp4"
+      ],
+      "filter_applied": "normal",
+      "copies": 1,
+      "status": "success",
+      "amount": 0,
+      "order_id": null,
+      "share_url": "http://192.168.18.242:3002/share/6ae769d970bbe2a22e69f2c1",
+      "download_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/composite.png",
+      "download_gif_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/animation.gif",
+      "download_live_url": "http://192.168.18.242:3002/uploads/users/6ac09fa5e736f65b65959a01/events/default_event/sessions/6ae769d970bbe2a22e69f2c1/composite_live.mp4",
+      "created_at": "2026-11-01T16:33:29.205Z"
+    },
+    {
       "id": "6ad74943137835c69554e3d0",
       "user_id": "6ac09fa5e736f65b65959a01",
       "event_id": "default_event",
@@ -1278,7 +1513,10 @@
       ],
       "filter_applied": "normal",
       "copies": 1,
-      "created_at": "2026-09-30T05:00:22.262Z"
+      "created_at": "2026-09-30T05:00:22.262Z",
+      "drive_upload_status": "failed",
+      "updated_at": "2026-11-01T18:12:30.365Z",
+      "error": "Google Drive upload failed for \"photo_strip_composite.png\" (403): {\n  \"error\": {\n    \"code\": 403,\n    \"message\": \"Service Accounts do not have storage quota. Leverage shared drives (https://developers.google.com/workspace/drive/api/guides/about-shareddrives), or use OAuth delegation (http://support.google.com/a/answer/7281227) instead.\",\n    \"errors\": [\n      {\n        \"message\": \"Service Accounts do not have storage quota. Leverage shared drives (https://developers.google.com/workspace/drive/api/guides/about-shareddrives), or use OAuth delegation (http://support.google.com/a/answer/7281227) instead.\",\n        \"domain\": \"usageLimits\",\n        \"reason\": \"storageQuotaExceeded\"\n      }\n    ]\n  }\n}\n"
     }
   ],
   "settings": {
@@ -1288,6 +1526,142 @@
     "copiesCount": 1,
     "enableStickers": true,
     "enableFilters": true,
-    "printLayout": "4x6"
-  }
+    "printLayout": "4x6",
+    "googleDriveEnabled": true,
+    "googleDriveClientEmail": "photobooth@pindaiopname.iam.gserviceaccount.com",
+    "googleDrivePrivateKey": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDJLbQPC+MiRsoM\n3jwxA5b9t6FqI33PftzvZ7oHNKMLYSIMbRQhZIIxMH9YK6Csgsmq+Y+URYJ83CGm\n2Eg2vjx191/qc4LM8R0yoWv30YL9AgWlCbexsUuU/wVDctN2/Rr7G9fsD3mDfl9e\nZp43yfI6o4ur+AiFuLThPlcTiNIQo40ZpmvEUIBSOzK/qnFMlH4Ovay1vRtsPSeW\n/Wnlnqclf7pyiInEg2jBP4lVTWkT1LMVn8YVT/fEm3zIxkA+OWM+Owgr4i3erWpE\ngjTtyBw5YNcIDD8MZXwxd49xtC0XP1JW4/nlOlUJQj67KMEiABiJwJFcEC7VA/Te\nfv2DGC/hAgMBAAECggEADsfT1dMqwebvi1h8laFM46EtM84dvTP16YT2bvcYD4r4\nZG9TLkzjH9gPUxwJdwM4693gBaXBu4i01DxJufPqH0SogGIyNvp0CbdAZnm3JP2U\nCpcXLu/2vKCr81OpY7Ge3Noj2A0fAWE0gowJjdHBgTto1J6piaGTcIUTArVnsZ8h\nMT4OQBDOHImgN7jFEmW/E3OXPaTc7dsHLv9v3KCHlcNbDgtqQy2Iqgx9ng3T4uVa\nWG46iLlpXRID7ZVgyRYsI1Blz5DubWQDf73Iz8/qx6F+7uyNniIqOFRzM+HrLpt6\n+Bpb4TPWpZQ7/9mdhOj5euXp114cp5j/enueINEqPQKBgQDnfk5d8h4pOPMOb0r+\nvnUMiGqLxuwAah2yc6ThitysB3mH7yOT93HMQ4gyAH/Csw0SBOV6cp+EV1EIOQmQ\n8EQKLuvEIriGsvosglkZuF2drjnMOmvdXckh0ykT2hGSy4lM5vipJMQ+LOh2DOCm\nhIiECoa4d1mvary/TwZ54CDJhwKBgQDeedXf4NCObXWc4O9hzHHGNaJ4bv9UmnL7\nK9HQf73E+j7vtsg0/D0p4oNO5uIRvL8OcRbchMJPddSjDQksOQNECGwunICwI4rJ\ncRDHi4IRrmNAKSeOkmP6HAZOfSbF3Wg0/aU99DU7vJAkp9DUkOS2KJh/qfczdGX9\nLXqAh591VwKBgEx0pdNXXOjGe1ggH8fFBYmPIIlruJRmd8pxcVpgb4ONsHDZ5YlA\nJ2CMSVYiXg/i7QUvgs8PPmoKIKQzmlo5UG+AkbOkuAcc442Bu4XII3spiMNP5EIn\ncH9wa1e4JSeze3RfsG7Eyt+yG1Cp7iRxD1l01IvmN0O9X/tbUUs9X/bPAoGBAIwl\nK7lwIXDXOzOr7qAo7bLyrno3Udi1wqC+pdk13xFqoqLW/Z+DFfSAoD7f6qFJyQEL\n9F7NsqnjjCN6XsDg2VHODHgAVoCeoxrqgqtxEmqY9CTCyAxj4172sHJZHEeghbh7\n38/7Ol17F0JABKki7TBiuk4Rf4uGU4j9USIOTUDZAoGAXtnjmc/4EXRlJXdE+916\n+VyYq1qVb/sZipun+FOM+01Y6/izhIhTYm+op4yleYc0PnOHT4OIBeL+JRWXjFvg\nhOC4WPybg2SBV5abKSrpULH2TrqXq+A3/NVaObNrQsqRFQlwQ1Zd+I4JgFKDPYJn\n9pHy6VQxjX/bustplyJFQu0=\n-----END PRIVATE KEY-----\n",
+    "googleDriveProjectId": "pindaiopname",
+    "googleDriveFolderId": "1OL3dP2ySkJ2Os4ljwMyszGB4o7_DLB5n",
+    "googleDriveRootName": "photobooth",
+    "qrExpiryHours": 720,
+    "publicShareDomain": "https://storymoment.my.id"
+  },
+  "tokens": [
+    {
+      "session_id": "test_session_123",
+      "token_hash": "9cdff6351dd4836165ea4ebde33dd6365b7b35a0e0decc0fa761fc3ea4324964",
+      "token_preview": "28cf48ca",
+      "raw_token": "28cf48ca7115a83a271a193d73a9b4cbba639355ec8fa7cb01f8a5a4b1ae15a3",
+      "expires_at": "2026-11-02T17:43:13.500Z",
+      "revoked_at": "2026-11-01T17:43:44.731Z",
+      "created_at": "2026-11-01T17:43:13.586Z"
+    },
+    {
+      "session_id": "test_session_123",
+      "token_hash": "9334605316cf9bedb85bb322365bda01f11a97ecc988674ebda8eb6934c4b81f",
+      "token_preview": "2a2da767",
+      "raw_token": "2a2da7676b30e236a1e7e732901438a2279b59d49e838f9e75b32c7ebfcb345e",
+      "expires_at": "2026-11-02T17:43:23.538Z",
+      "revoked_at": "2026-11-01T17:43:44.731Z",
+      "created_at": "2026-11-01T17:43:23.610Z"
+    },
+    {
+      "session_id": "test_session_123",
+      "token_hash": "b4d9a964f46962d76b6e03e6e8b60b68d30495b97d051487340c5ad31ded8481",
+      "token_preview": "84f2661f",
+      "raw_token": "84f2661fd3ad9c6cf897cc24231ecea95c8d8afb6399b7fdfd1c405031497451",
+      "expires_at": "2026-11-02T17:43:44.513Z",
+      "revoked_at": "2026-11-01T17:43:44.731Z",
+      "created_at": "2026-11-01T17:43:44.560Z"
+    },
+    {
+      "session_id": "test_session_123",
+      "token_hash": "3c7e7d36eb2d92d1825c8dc3d8c969524136420efe339ef1d492a5b96594a33e",
+      "token_preview": "a7b6093a",
+      "raw_token": "a7b6093a31838745de46b0c036eed47c6bbfd4538e018ee2b8b4c1812e8910a2",
+      "expires_at": "2026-11-03T17:43:45.133Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T17:43:45.167Z"
+    },
+    {
+      "session_id": "6ae77d37ce0e2400d22a4e0b",
+      "token_hash": "a49e52b6f68f308a37493ac0a93539057ea021260c2d1358b8fd255f0b66497c",
+      "token_preview": "472a4fb2",
+      "raw_token": "472a4fb209fa2dfa4c41d9c22ec2de01ee1627bdc6c2aa904933a627a1ae730c",
+      "expires_at": "2026-11-03T17:56:08.543Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T17:56:08.614Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "c87445a1e455576f79430b73c8304dca5a3f0c20f9683461f71f195bf690f21d",
+      "token_preview": "027ae454",
+      "raw_token": "027ae4545d4720972feedf9c20c2a0903fb76f68d10bf510b037cc99824254a1",
+      "expires_at": "2026-11-03T18:01:16.176Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:01:16.214Z"
+    },
+    {
+      "session_id": "6ae77e6d75e0e3770068822f",
+      "token_hash": "6e09d828c0719dea53be3ebc461520e4ed4523190f7acbbc7085a2425940c126",
+      "token_preview": "f5c645bc",
+      "raw_token": "f5c645bc11c4273665081ba73b90ac67ce61064ebc747ee397e73e477bf86901",
+      "expires_at": "2026-11-03T18:01:17.866Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:01:17.945Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "9bb2334741446560e232a33e91ebe52e3efe2ce148c186be2ba41d4baec2c110",
+      "token_preview": "0d76cfab",
+      "raw_token": "0d76cfabe03add4bc4c8888a7de93c1c3ffb36691ab02c67809c867fc68057f9",
+      "expires_at": "2026-11-03T18:02:02.630Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:02:02.671Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "3f62d7392d643773d91ef8a6e634a87d2c6041f73ed36848a87f456b262407cf",
+      "token_preview": "e355508f",
+      "raw_token": "e355508f482e885124ec19989ac1d41809fe15d56c426fde8d43593ccd912d95",
+      "expires_at": "2026-11-03T18:02:07.617Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:02:07.663Z"
+    },
+    {
+      "session_id": "6ae77f914636da25169d2f4a",
+      "token_hash": "43cd7bc832b5b0fa1e24f938bdb840cb3b058caf9b80e5d5f949e3c5e7696138",
+      "token_preview": "ffec09b4",
+      "raw_token": "ffec09b4c0b8de2c7d8a2055c59782dc649d5b8f8e32dc0d10f04d5b934c3990",
+      "expires_at": "2026-12-01T18:06:09.779Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:06:09.880Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "d5ba6ea5757c6d87146982c630dde0da0e85e204f95705f42188982ff9bf6b10",
+      "token_preview": "55f36a0b",
+      "raw_token": "55f36a0bdd04df9e1b7587ce951ed675aad551b5941a174110ba1b7a6b37a31d",
+      "expires_at": "2026-12-01T18:10:06.223Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:10:06.261Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "f3e4a29bc72c4130090ce66ffed5b58a430b1379c5d0ee1c807877cc010e57fc",
+      "token_preview": "45d712d5",
+      "raw_token": "45d712d5809b1cbf677d9da3ca950da0a11f202f33236c47f32806b5535b3dbe",
+      "expires_at": "2026-12-01T18:11:09.302Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:11:09.340Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "1ec8470af86917fd5e49cfb9f0056e36193f51fb7937eb6d6b9f073ac8678326",
+      "token_preview": "3011444c",
+      "raw_token": "3011444cf451e6ec795c574572409489b39cb62308e768ba90d43604aec4830d",
+      "expires_at": "2026-12-01T18:11:46.367Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:11:46.403Z"
+    },
+    {
+      "session_id": "session_1790744422262",
+      "token_hash": "cd757f232204e29375ca628e1716cf82426ffd70c845cbe6ce5610c354cb5cfa",
+      "token_preview": "da879946",
+      "raw_token": "da879946dbc24c69c44410e717d776631bdb11f4a918bf230245d42217d01073",
+      "expires_at": "2026-12-01T18:12:24.409Z",
+      "revoked_at": null,
+      "created_at": "2026-11-01T18:12:24.452Z"
+    }
+  ]
 }

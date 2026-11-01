@@ -13,6 +13,7 @@ function toEntity(doc) {
     photoFlow: doc.photo_flow,
     availableFrames: doc.available_frames,
     defaultFrameId: doc.default_frame_id,
+    enableLivePicture: doc.enable_live_picture !== undefined ? doc.enable_live_picture : true,
     createdAt: doc.created_at
   });
 }
@@ -25,7 +26,8 @@ function toDocument(event) {
     price_per_photo: event.pricePerPhoto,
     photo_flow: event.photoFlow,
     available_frames: event.availableFrames,
-    default_frame_id: event.defaultFrameId
+    default_frame_id: event.defaultFrameId,
+    enable_live_picture: event.enableLivePicture
   };
 }
 

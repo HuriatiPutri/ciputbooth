@@ -7,6 +7,7 @@ import { soundManager } from '../../utils/audio';
 import { Button, Badge, AmbientBackground, GlassCard } from '../common';
 import { useSocket } from '../../context/SocketContext';
 import LiveFramePreview from './LiveFramePreview';
+import { printerService } from '../../services/printerService';
 
 export default function ResultScreen() {
   const {
@@ -20,10 +21,11 @@ export default function ResultScreen() {
     customText,
     resetToWelcome,
     savedSessionId,
-    savedSessionData
+    savedSessionData,
+    isLivePictureEnabled
   } = useBooth();
   const { socket } = useSocket();
-  const hasLiveMotion = Boolean(
+  const hasLiveMotion = isLivePictureEnabled && Boolean(
     (capturedLiveClips && capturedLiveClips.length > 0) ||
     liveCompositeUrl ||
     savedSessionData?.live_photo_url ||
@@ -34,6 +36,8 @@ export default function ResultScreen() {
   useEffect(() => {
     if (hasLiveMotion) {
       setActiveResultView('live');
+    } else {
+      setActiveResultView('photo');
     }
   }, [hasLiveMotion]);
 
@@ -70,32 +74,41 @@ export default function ResultScreen() {
     return () => clearInterval(timerId);
   }, [autoResetTimer, resetToWelcome]);
 
-  // Generate QR Code with proper share URL (Local IP / Server mobile download endpoint)
+  // Generate QR Code with proper share URL (Custom Public Domain or Local IP)
   useEffect(() => {
     async function setupQrCode() {
-      let targetUrl = savedSessionData?.share_url;
-
-      if (!targetUrl) {
-        try {
-          const res = await fetch('/api/info');
-          const info = await res.json();
-          if (info.success && info.ip) {
-            const sid = savedSessionId || (savedSessionData && savedSessionData.id) || '';
-            const portToUse = info.http_port || 3002;
-            targetUrl = sid ? `http://${info.ip}:${portToUse}/share/${sid}` : `http://${info.ip}:${portToUse}/uploads/sessions/latest.png`;
-          }
-        } catch (e) {
-          console.warn('Could not fetch server network info:', e);
-        }
-      }
-
-      if (!targetUrl) {
-        targetUrl = `${window.location.origin}/share/${savedSessionId || ''}`;
-      }
-
-      setCurrentShareUrl(targetUrl);
-
       try {
+        const res = await fetch('/api/info');
+        const info = await res.json();
+        const sid = savedSessionData?.secure_token || savedSessionId || (savedSessionData && savedSessionData.id) || '';
+
+        let targetUrl = savedSessionData?.share_url || '';
+
+        // If a custom public domain is configured on the backend, ensure QR code uses it
+        if (info?.public_share_domain) {
+          const publicBase = info.public_share_domain.replace(/\/+$/, '');
+          if (targetUrl) {
+            const tokenOrSid = targetUrl.includes('/share/') ? targetUrl.split('/share/')[1] : sid;
+            targetUrl = `${publicBase}/share/${tokenOrSid}`;
+          } else if (sid) {
+            targetUrl = `${publicBase}/share/${sid}`;
+          }
+        } else if (targetUrl && targetUrl.startsWith('/')) {
+          const portToUse = info.http_port || 3002;
+          const localHost = info.ip ? `http://${info.ip}:${portToUse}` : window.location.origin;
+          targetUrl = `${localHost}${targetUrl}`;
+        } else if (!targetUrl) {
+          const portToUse = info.http_port || 3002;
+          const localHost = info.ip ? `http://${info.ip}:${portToUse}` : window.location.origin;
+          targetUrl = sid ? `${localHost}/share/${sid}` : `${localHost}/uploads/sessions/latest.png`;
+        }
+
+        if (!targetUrl) {
+          targetUrl = `${window.location.origin}/share/${sid}`;
+        }
+
+        setCurrentShareUrl(targetUrl);
+
         const qr = await QRCode.toDataURL(targetUrl, {
           width: 280,
           margin: 2,
@@ -128,114 +141,82 @@ export default function ResultScreen() {
     if (!socket) return;
     const handleAction = (data) => {
       console.log('🖨️ Received kiosk_action on client:', data);
-      if (data && data.action === 'PRINT') {
-        // ONLY the laptop display (not iPad/mobile) triggers the physical printer dialog!
+      if (data && (data.action === 'PRINT' || data.action === 'PRINT_JOB')) {
+        // Laptop/desktop display executes automatic silent print
         if (!isTouchMobileOrRemote()) {
-          console.log('🖨️ Laptop display detected - opening printer dialog!');
-          executePrint();
+          console.log('🖨️ Display executing automatic silent print...');
+          executePrint(data.photoUrl, data.copies);
         } else {
-          console.log('📱 Remote client received echo - ignoring local print dialog');
+          console.log('📱 Remote client received echo - ignoring local print execution');
         }
       }
     };
     socket.on('kiosk_action', handleAction);
     return () => socket.off('kiosk_action', handleAction);
-  }, [socket]);
+  }, [socket, compositeUrl, savedSessionData]);
 
-  const executePrint = () => {
-    // Safety check: Never ever trigger window.print on remote iPad!
-    if (isTouchMobileOrRemote()) {
-      console.warn('Blocked executePrint on remote iPad/mobile device.');
+  const executePrint = async (customUrl = null, customCopies = null) => {
+    const targetImgUrl = customUrl || compositeUrl || savedSessionData?.download_url || savedSessionData?.composite_url;
+    if (!targetImgUrl) {
+      console.warn('No photo strip URL available to print');
       return;
     }
 
-    console.log('🖨️ Executing print dialog on laptop printer...');
-    const targetImgUrl = compositeUrl || savedSessionData?.download_url || savedSessionData?.composite_url;
-    
-    setIsPrinting(true);
-
-    // Technique: Use a dedicated print iframe for maximum cross-browser consistency without blank pages
-    if (targetImgUrl) {
-      try {
-        let printIframe = document.getElementById('photobooth-print-iframe');
-        if (!printIframe) {
-          printIframe = document.createElement('iframe');
-          printIframe.id = 'photobooth-print-iframe';
-          printIframe.style.position = 'fixed';
-          printIframe.style.right = '0';
-          printIframe.style.bottom = '0';
-          printIframe.style.width = '0';
-          printIframe.style.height = '0';
-          printIframe.style.border = '0';
-          document.body.appendChild(printIframe);
-        }
-
-        const framePrintSize = selectedFrame?.print_size || settings?.printLayout || '2x6';
-        const pageSizeCss = framePrintSize === '4x6' ? '4in 6in portrait' : '2in 6in portrait';
-
-        const iframeDoc = printIframe.contentWindow.document;
-        iframeDoc.open();
-        iframeDoc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Print Photo Strip</title>
-              <style>
-                @page {
-                  size: ${pageSizeCss};
-                  margin: 0;
-                }
-                html, body {
-                  margin: 0;
-                  padding: 0;
-                  width: 100%;
-                  height: 100%;
-                  overflow: hidden;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  background: white;
-                }
-                img {
-                  width: 100%;
-                  height: 100%;
-                  object-fit: contain;
-                  display: block;
-                }
-              </style>
-            </head>
-            <body>
-              <img src="${targetImgUrl}" onload="setTimeout(() => { window.focus(); window.print(); }, 250);" />
-            </body>
-          </html>
-        `);
-        iframeDoc.close();
-        setTimeout(() => setIsPrinting(false), 2000);
-        return;
-      } catch (err) {
-        console.warn('Iframe print fallback to window.print():', err);
-      }
+    if (isPrinting) {
+      console.warn('Print already in progress');
+      return;
     }
 
-    // Default window.print fallback
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 400);
+    setIsPrinting(true);
+    console.log('🖨️ Sending silent print job to default printer...');
+
+    try {
+      const copiesToPrint = customCopies || (selectedFrame?.print_size === '2x6' ? 2 : 1);
+      const res = await printerService.printPhoto({
+        photoUrl: targetImgUrl,
+        copies: copiesToPrint,
+        source: 'customer'
+      });
+
+      console.log('Print result:', res);
+    } catch (err) {
+      console.error('Silent print failed:', err);
+    } finally {
+      setTimeout(() => {
+        setIsPrinting(false);
+      }, 3000);
+    }
   };
 
   // Handle printer action
   const handlePrint = () => {
     soundManager.playClick();
+    if (isPrinting) return;
+
     const isRemote = isTouchMobileOrRemote();
     if (isRemote) {
       // Command the main laptop/booth display to print!
       setIsPrinting(true);
       console.log('📱 Sending remote_action PRINT to laptop...');
-      socket?.emit('remote_action', { action: 'PRINT' });
+      const targetImgUrl = compositeUrl || savedSessionData?.download_url || savedSessionData?.composite_url;
+      const copiesToPrint = selectedFrame?.print_size === '2x6' ? 2 : 1;
+
+      socket?.emit('remote_action', {
+        action: 'PRINT_JOB',
+        photoUrl: targetImgUrl,
+        copies: copiesToPrint
+      });
+
+      // Also trigger backend print dispatch as backup
+      printerService.printPhoto({
+        photoUrl: targetImgUrl,
+        copies: copiesToPrint,
+        source: 'customer'
+      }).catch((e) => console.warn('Remote printer service trigger notice:', e));
+
       setTimeout(() => {
         setIsPrinting(false);
-      }, 3500);
+      }, 4000);
     } else {
       executePrint();
     }
@@ -271,7 +252,7 @@ export default function ResultScreen() {
     if (compositeUrl) {
       filesToDownload.push({ url: compositeUrl, name: `ciputbooth-${Date.now()}-framed.png` });
     }
-    const liveUrl = liveCompositeUrl || savedSessionData?.download_live_url || savedSessionData?.live_photo_url;
+    const liveUrl = isLivePictureEnabled ? (liveCompositeUrl || savedSessionData?.download_live_url || savedSessionData?.live_photo_url) : null;
     if (liveUrl) {
       const isMp4 = liveUrl.startsWith('data:video/mp4') || liveUrl.toLowerCase().endsWith('.mp4');
       const ext = isMp4 ? 'mp4' : 'webm';
@@ -287,7 +268,7 @@ export default function ResultScreen() {
         }
       });
     }
-    if (Array.isArray(capturedLiveClips)) {
+    if (isLivePictureEnabled && Array.isArray(capturedLiveClips)) {
       capturedLiveClips.forEach((clip, idx) => {
         if (clip) {
           const isMp4 = clip.startsWith('data:video/mp4') || clip.toLowerCase().endsWith('.mp4');
@@ -353,39 +334,41 @@ export default function ResultScreen() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="max-w-7xl w-full mx-auto z-10 grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-5 items-center flex-1 py-1.5 min-h-0 my-auto">
+      <div className="max-w-7xl w-full mx-auto z-10 grid grid-cols-1 xl:grid-cols-12 gap-3 sm:gap-4 xl:gap-5 items-center flex-1 py-1.5 min-h-0 my-auto">
         {/* Left: Printed Strip Showcase */}
-        <div className="md:col-span-5 lg:col-span-6 h-full max-h-[42vh] md:max-h-full flex flex-col items-center justify-center min-h-0 gap-1.5">
-          {/* Mode Switcher Pill */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md p-1 rounded-2xl border border-white/20 shadow-xl flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveResultView('photo')}
-              className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeResultView === 'photo'
-                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Camera className="w-3.5 h-3.5" />
-              <span>Photo Strip</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveResultView('live')}
-              className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeResultView === 'live'
-                  ? 'bg-gradient-to-r from-violet-600 via-pink-500 to-amber-400 text-white shadow-lg shadow-violet-500/30 ring-1 ring-white/30'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Video className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>Live Picture ✨</span>
-            </button>
-          </div>
+        <div className="xl:col-span-6 h-full max-h-[48vh] sm:max-h-[50vh] xl:max-h-full flex flex-col items-center justify-center min-h-0 gap-1.5">
+          {/* Mode Switcher Pill - Only shown when live motion is enabled and available */}
+          {hasLiveMotion && (
+            <div className="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md p-1 rounded-2xl border border-white/20 shadow-xl flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveResultView('photo')}
+                className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeResultView === 'photo'
+                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Photo Strip</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveResultView('live')}
+                className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeResultView === 'live'
+                    ? 'bg-gradient-to-r from-violet-600 via-pink-500 to-amber-400 text-white shadow-lg shadow-violet-500/30 ring-1 ring-white/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Video className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>Live Picture ✨</span>
+              </button>
+            </div>
+          )}
 
           <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden glass-panel border border-white/20 p-2 sm:p-3 shadow-2xl bg-slate-950/95 flex-1 w-full flex items-center justify-center min-h-0">
-            {activeResultView === 'live' ? (
+            {hasLiveMotion && activeResultView === 'live' ? (
               <div className="relative w-full h-full flex items-center justify-center">
                 <LiveFramePreview
                   frame={selectedFrame}
@@ -395,7 +378,7 @@ export default function ResultScreen() {
                   stickers={stickers}
                   customText={customText}
                   isLive={true}
-                  className="h-full w-auto max-w-full object-contain"
+                  className="h-full w-auto max-w-full"
                 />
                 <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-900/85 backdrop-blur-md text-white text-[10px] font-bold shadow-lg border border-violet-500/40">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -426,16 +409,21 @@ export default function ResultScreen() {
         </div>
 
         {/* Right: Actions & Digital QR Code */}
-        <div className="md:col-span-7 lg:col-span-6 flex flex-col gap-2.5 sm:gap-3.5 glass-panel rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/20 shadow-2xl min-h-0 justify-between">
+        <div className="xl:col-span-6 flex flex-col gap-2.5 sm:gap-3.5 glass-panel rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-white/20 shadow-2xl min-h-0 justify-between">
           {/* Action 1: Print Strip Button */}
           <Button
             variant="primary"
             size="lg"
             leftIcon={Printer}
             onClick={handlePrint}
+            disabled={isPrinting}
             className="w-full py-3 sm:py-3.5 text-sm sm:text-base font-black shadow-xl flex-shrink-0"
           >
-            {isTouchMobileOrRemote() ? '🖨️ SEND TO LAPTOP PRINTER' : 'PRINT PHOTO STRIP NOW'}
+            {isPrinting
+              ? '🖨️ SENDING TO PRINTER...'
+              : isTouchMobileOrRemote()
+              ? '🖨️ SEND TO LAPTOP PRINTER'
+              : 'PRINT PHOTO STRIP NOW'}
           </Button>
 
           {/* Action 2: Digital QR Code Card */}
@@ -452,25 +440,40 @@ export default function ResultScreen() {
 
             <div className="flex-1 text-left space-y-0.5 min-w-0">
               <Badge variant="violet" icon={Sparkles} size="sm" className="text-[10px] py-0.5 px-2">
-                HD Softcopy & Video
+                {hasLiveMotion ? 'HD Softcopy & Video' : 'HD Softcopy'}
               </Badge>
               <h4 className="font-bold text-xs sm:text-sm text-white">Scan with Phone</h4>
               <p className="text-slate-400 text-[11px] leading-tight line-clamp-2">
-                Scan with camera to download photo strip &amp; live video directly to your phone.
+                {hasLiveMotion
+                  ? 'Scan with camera to download photo strip & live video directly to your phone.'
+                  : 'Scan with camera to download your photo strip directly to your phone.'}
               </p>
-              <button
-                onClick={handleCopyLink}
-                className="text-[11px] text-pink-400 hover:text-pink-300 flex items-center gap-1 font-bold cursor-pointer pt-0.5"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" /> : <Share2 className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? 'Link Copied!' : 'Copy Direct Link'}</span>
-              </button>
+              <div className="flex items-center gap-3 pt-0.5">
+                <button
+                  onClick={handleCopyLink}
+                  className="text-[11px] text-pink-400 hover:text-pink-300 flex items-center gap-1 font-bold cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" /> : <Share2 className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
+                </button>
+                {currentShareUrl && (
+                  <a
+                    href={currentShareUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-slate-400 hover:text-blue-300 underline truncate max-w-[150px]"
+                    title="Buka link di browser"
+                  >
+                    Buka Link
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Action 3: Download & Start Over Buttons */}
           <div className="flex flex-col gap-2 flex-shrink-0">
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid ${hasLiveMotion ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
               <Button
                 variant="secondary"
                 size="sm"
@@ -481,14 +484,16 @@ export default function ResultScreen() {
                 Download Photo
               </Button>
 
-              <button
-                type="button"
-                onClick={handleDownloadLiveVideo}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-violet-600 via-pink-500 to-amber-500 text-white shadow hover:brightness-110 active:scale-95 transition cursor-pointer"
-              >
-                <Film className="w-3.5 h-3.5" />
-                <span>Live Video</span>
-              </button>
+              {hasLiveMotion && (
+                <button
+                  type="button"
+                  onClick={handleDownloadLiveVideo}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-violet-600 via-pink-500 to-amber-500 text-white shadow hover:brightness-110 active:scale-95 transition cursor-pointer"
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span>Live Video</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">

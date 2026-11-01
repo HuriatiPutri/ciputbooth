@@ -193,6 +193,21 @@ class Database {
     return newSession;
   }
 
+  updateSession(id, updates) {
+    const data = this.load();
+    data.sessions = data.sessions || [];
+    const index = data.sessions.findIndex((s) => s.id === id || String(s._id) === id);
+    if (index === -1) return null;
+
+    data.sessions[index] = {
+      ...data.sessions[index],
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    this.save(data);
+    return data.sessions[index];
+  }
+
   deleteSession(id) {
     const data = this.load();
     data.sessions = data.sessions || [];

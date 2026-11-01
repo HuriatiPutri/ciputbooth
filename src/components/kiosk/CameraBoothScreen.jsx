@@ -24,8 +24,15 @@ export default function CameraBoothScreen() {
     setIsMockCamera,
     settings,
     retakeSingleSlot,
-    setRetakeSingleSlot
+    setRetakeSingleSlot,
+    isLivePictureEnabled,
+    activeEvent,
+    frames,
+    resetToWelcome
   } = useBooth();
+
+  const eventFrames = activeEvent?.frames || frames || [];
+  const hasOnlySingleFrame = eventFrames.length === 1 || activeEvent?.photo_flow === 'default_frame';
 
   const slots = selectedFrame?.photo_slots || [];
   const totalSlots = slots.length > 0
@@ -91,7 +98,7 @@ export default function CameraBoothScreen() {
   // Start recording user movement during countdown for Live Picture
   const startMotionRecording = () => {
     try {
-      if (isMockCamera || !videoRef.current || !videoRef.current.srcObject) {
+      if (!isLivePictureEnabled || isMockCamera || !videoRef.current || !videoRef.current.srcObject) {
         return;
       }
       const stream = videoRef.current.srcObject;
@@ -191,10 +198,12 @@ export default function CameraBoothScreen() {
     setIsFlashing(true);
     soundManager.playCaptureShutter();
 
-    // Stop recorder and collect live movement clip
-    const liveClipPromise = isMockCamera || cameraError
-      ? generateMockLiveClip(currentSlotNumber)
-      : stopMotionRecording();
+    // Stop recorder and collect live movement clip if enabled
+    const liveClipPromise = !isLivePictureEnabled
+      ? Promise.resolve(null)
+      : (isMockCamera || cameraError
+        ? generateMockLiveClip(currentSlotNumber)
+        : stopMotionRecording());
 
     setTimeout(() => {
       setIsFlashing(false);
@@ -251,6 +260,8 @@ export default function CameraBoothScreen() {
             if (retakeSingleSlot) {
               setRetakeSingleSlot(false);
               setStep('customize');
+            } else if (hasOnlySingleFrame) {
+              resetToWelcome();
             } else {
               setStep('frame_select');
             }
@@ -258,7 +269,7 @@ export default function CameraBoothScreen() {
           disabled={isCounting}
           className="rounded-full text-xs py-1.5 px-3 sm:px-4"
         >
-          {retakeSingleSlot ? 'Cancel' : 'Change Frame'}
+          {retakeSingleSlot ? 'Cancel' : hasOnlySingleFrame ? 'Exit' : 'Change Frame'}
         </Button>
 
         {/* Slot Progress Pill */}
@@ -306,7 +317,7 @@ export default function CameraBoothScreen() {
         </div>
 
         {/* Camera Frame Box with responsive max-height */}
-        <div className="relative w-full max-w-xl aspect-[4/3] max-h-[50vh] sm:max-h-[55vh] rounded-2xl sm:rounded-3xl overflow-hidden glass-panel border-2 border-white/25 shadow-2xl bg-black flex items-center justify-center p-1.5 sm:p-2">
+        <div className="relative w-full max-w-xl aspect-[4/3] max-h-[45vh] sm:max-h-[50vh] lg:max-h-[55vh] rounded-2xl sm:rounded-3xl overflow-hidden glass-panel border-2 border-white/25 shadow-2xl bg-black flex items-center justify-center p-1.5 sm:p-2">
           {/* Live Video Element */}
           {!isMockCamera ? (
             <video
@@ -343,7 +354,7 @@ export default function CameraBoothScreen() {
           </div>
 
           {/* REC Motion Live Picture Indicator */}
-          {countdown !== null && (
+          {isLivePictureEnabled && countdown !== null && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-rose-600/90 backdrop-blur-md px-3 py-1 rounded-full text-white text-[11px] font-black shadow-xl border border-white/20 animate-pulse pointer-events-none">
               <div className="w-2 h-2 rounded-full bg-white animate-ping" />
               <span className="tracking-wider uppercase">REC LIVE MOTION</span>

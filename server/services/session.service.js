@@ -4,6 +4,9 @@ import mongoose from 'mongoose';
 import { TransactionModel } from '../infrastructure/database/models/TransactionModel.js';
 import { EventModel } from '../infrastructure/database/models/EventModel.js';
 import { UserModel } from '../infrastructure/database/models/UserModel.js';
+import { SettingsModel } from '../infrastructure/database/models/SettingsModel.js';
+import { tokenService } from './token.service.js';
+import { cloudUploadService } from './cloud-upload.service.js';
 import { PATHS, PORT } from '../config/constants.js';
 import { getLocalIpAddress } from '../config/network.js';
 import { db } from '../db.js';
@@ -37,6 +40,7 @@ export class SessionService {
   static async getSessions(user) {
     const isMongoConnected = Boolean(mongoose.connection && mongoose.connection.readyState === 1);
     let mongoSessions = [];
+    const eventsMap = new Map();
 
     if (isMongoConnected) {
       try {
@@ -45,6 +49,11 @@ export class SessionService {
           query.user_id = user.id;
         }
         mongoSessions = await TransactionModel.find(query).sort({ created_at: -1 }).lean();
+
+        const allEvents = await EventModel.find().lean();
+        for (const ev of allEvents) {
+          eventsMap.set(String(ev._id), ev.event_name);
+        }
       } catch (err) {
         console.warn('⚠️ Could not fetch sessions from MongoDB:', err.message);
       }
@@ -69,10 +78,15 @@ export class SessionService {
       if (!sId || seenIds.has(sId)) continue;
       seenIds.add(sId);
 
+      const rawEventId = session.event_id || 'default_event';
+      const eventIdStr = String(rawEventId);
+      const eventName = session.event_name || eventsMap.get(eventIdStr) || (eventIdStr === 'default_event' ? 'General / Default Event' : 'Event ' + eventIdStr.slice(-6));
       const compositeUrl = session.composite_url || session.photo_url || '';
       merged.push({
         ...session,
         id: sId,
+        event_id: eventIdStr,
+        event_name: eventName,
         composite_url: compositeUrl,
         photo_url: compositeUrl,
         frame_name: session.frame_name || 'Photo Strip',
@@ -89,10 +103,15 @@ export class SessionService {
       if (!sId || seenIds.has(sId)) continue;
       seenIds.add(sId);
 
+      const rawEventId = session.event_id || 'default_event';
+      const eventIdStr = String(rawEventId);
+      const eventName = session.event_name || eventsMap.get(eventIdStr) || (eventIdStr === 'default_event' ? 'General / Default Event' : 'Event ' + eventIdStr.slice(-6));
       const compositeUrl = session.photo_url || session.composite_url || '';
       merged.push({
         ...session,
         id: sId,
+        event_id: eventIdStr,
+        event_name: eventName,
         composite_url: compositeUrl,
         photo_url: compositeUrl,
         frame_name: session.frame_name || 'Photo Strip',
@@ -135,11 +154,53 @@ export class SessionService {
     const httpPort = process.env.HTTP_PORT || 3002;
     const compositeUrl = session.photo_url || session.composite_url || '';
 
+    // Ensure session has an active secure token
+    let activeToken = session.secure_token;
+    if (!activeToken) {
+      try {
+        const tokenRes = await tokenService.createSessionToken(sId);
+        activeToken = tokenRes.rawToken;
+        session.secure_token = activeToken;
+        session.token_expires_at = tokenRes.expiresAt;
+      } catch (e) {
+        console.warn('Could not lazily generate secure token:', e.message);
+      }
+    }
+
+    let globalSettings = null;
+    if (mongoose.connection?.readyState === 1) {
+      try {
+        globalSettings = await SettingsModel.findOne({ type: 'user' }).lean();
+      } catch (e) {}
+    }
+    if (!globalSettings) {
+      globalSettings = db.getSettings();
+    }
+
+    let publicDomain = (globalSettings?.publicShareDomain || '').trim();
+    if (publicDomain && !/^https?:\/\//i.test(publicDomain)) {
+      publicDomain = `https://${publicDomain}`;
+    }
+    publicDomain = publicDomain.replace(/\/+$/, '');
+
+    const baseHost = publicDomain || `http://${localIp}:${httpPort}`;
+    const share_url = activeToken
+      ? `${baseHost}/share/${activeToken}`
+      : `${baseHost}/share/${sId}`;
+
     const photos = Array.isArray(session.photos)
-      ? session.photos.map((p) => (p.startsWith('http') ? p : `http://${localIp}:${httpPort}${p}`))
+      ? session.photos.map((p) => {
+          if (typeof p !== 'string') return '';
+          if (p.startsWith('http') || p.startsWith('data:')) return p;
+          return `http://${localIp}:${httpPort}${p}`;
+        })
       : [];
     const liveClips = Array.isArray(session.live_clips)
-      ? session.live_clips.map((c) => (c.startsWith('http') ? c : `http://${localIp}:${httpPort}${c}`))
+      ? session.live_clips.map((c) => {
+          if (typeof c !== 'string') return '';
+          if (c.startsWith('http') || c.startsWith('data:')) return c;
+          return `http://${localIp}:${httpPort}${c}`;
+        })
       : [];
 
     return {
@@ -152,7 +213,7 @@ export class SessionService {
       live_photo_url: session.live_photo_url || '',
       photos,
       live_clips: liveClips,
-      share_url: session.share_url || `http://${localIp}:${httpPort}/share/${sId}`,
+      share_url: share_url,
       download_url: compositeUrl ? `http://${localIp}:${httpPort}${compositeUrl}` : '',
       download_gif_url: session.gif_url ? `http://${localIp}:${httpPort}${session.gif_url}` : '',
       download_live_url: session.live_photo_url ? `http://${localIp}:${httpPort}${session.live_photo_url}` : ''
@@ -167,6 +228,7 @@ export class SessionService {
     let user_id = 'default_user';
     let safeEventId = event_id || 'default_event';
     let amount = 0;
+    let event_name = 'General / Default Event';
 
     if (isMongoConnected) {
       try {
@@ -175,6 +237,7 @@ export class SessionService {
           if (event) {
             user_id = event.user_id.toString();
             amount = event.price_per_photo || 0;
+            event_name = event.event_name;
           }
         } else {
           const defaultUser = await UserModel.findOne({ role: 'admin' }).lean();
@@ -290,9 +353,28 @@ export class SessionService {
       }
     }
 
+    const tokenData = await tokenService.createSessionToken(sessionIdStr);
+
+    let globalSettings = null;
+    if (isMongoConnected) {
+      try {
+        globalSettings = await SettingsModel.findOne({ type: 'user' }).lean();
+      } catch (e) {}
+    }
+    if (!globalSettings) {
+      globalSettings = db.getSettings();
+    }
+
     const localIp = getLocalIpAddress();
     const httpPort = process.env.HTTP_PORT || 3002;
-    const share_url = `http://${localIp}:${httpPort}/share/${sessionIdStr}`;
+    let publicDomain = (globalSettings?.publicShareDomain || '').trim();
+    if (publicDomain && !/^https?:\/\//i.test(publicDomain)) {
+      publicDomain = `https://${publicDomain}`;
+    }
+    publicDomain = publicDomain.replace(/\/+$/, '');
+
+    const baseHost = publicDomain || `http://${localIp}:${httpPort}`;
+    const share_url = `${baseHost}/share/${tokenData.rawToken}`;
     const download_url = photo_url ? `http://${localIp}:${httpPort}${photo_url}` : '';
     const download_gif_url = gif_url ? `http://${localIp}:${httpPort}${gif_url}` : '';
     const download_live_url = live_photo_url ? `http://${localIp}:${httpPort}${live_photo_url}` : '';
@@ -302,6 +384,7 @@ export class SessionService {
       id: sessionIdStr,
       user_id,
       event_id: safeEventId,
+      event_name,
       amount,
       status: 'success',
       photo_url,
@@ -319,6 +402,11 @@ export class SessionService {
       download_url,
       download_gif_url,
       download_live_url,
+      secure_token: tokenData.rawToken,
+      secure_token_hash: tokenData.tokenHash,
+      token_expires_at: tokenData.expiresAt.toISOString(),
+      drive_upload_status: 'pending',
+      drive_files: [],
       created_at: now.toISOString()
     };
 
@@ -327,6 +415,11 @@ export class SessionService {
     } catch (dbErr) {
       console.warn('⚠️ Could not save session to local database:', dbErr);
     }
+
+    // Trigger asynchronous Google Drive upload
+    cloudUploadService.uploadSessionPhotos(localSessionData, absoluteDir).catch((e) => {
+      console.error('Background Google Drive upload error:', e.message);
+    });
 
     // Also persist to MongoDB if connected
     if (isMongoConnected) {
@@ -345,7 +438,12 @@ export class SessionService {
               frame_name: frame_name || 'Photo Strip',
               filter_applied: filter_applied || 'normal',
               copies: copies || 1,
-              status: 'success'
+              status: 'success',
+              secure_token: tokenData.rawToken,
+              secure_token_hash: tokenData.tokenHash,
+              token_expires_at: tokenData.expiresAt,
+              drive_upload_status: 'pending',
+              drive_files: []
             },
             { new: true }
           );
@@ -355,6 +453,7 @@ export class SessionService {
           transaction = new TransactionModel({
             _id: sessionObjId,
             event_id: safeEventId,
+            event_name,
             user_id,
             amount,
             status: 'success',
@@ -366,7 +465,12 @@ export class SessionService {
             frame_id: frame_id || null,
             frame_name: frame_name || 'Photo Strip',
             filter_applied: filter_applied || 'normal',
-            copies: copies || 1
+            copies: copies || 1,
+            secure_token: tokenData.rawToken,
+            secure_token_hash: tokenData.tokenHash,
+            token_expires_at: tokenData.expiresAt,
+            drive_upload_status: 'pending',
+            drive_files: []
           });
           await transaction.save();
         }

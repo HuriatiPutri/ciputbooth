@@ -4,7 +4,7 @@ import { useBooth } from '../../context/BoothContext';
 import { Button } from '../common';
 
 export default function PaymentGateScreen() {
-  const { activeEvent, resetToWelcome, setStep } = useBooth();
+  const { activeEvent, resetToWelcome, setStep, frames, setSelectedFrame } = useBooth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -33,7 +33,12 @@ export default function PaymentGateScreen() {
   }, []);
 
   const proceedToNextStep = () => {
-    if (activeEvent.photo_flow === 'default_frame') {
+    const eventFrames = activeEvent?.frames || frames || [];
+    const isSingleFrame = eventFrames.length === 1 || activeEvent?.photo_flow === 'default_frame';
+    const frameToUse = (activeEvent?.default_frame_id ? eventFrames.find((f) => f.id === activeEvent.default_frame_id) : null) || eventFrames[0];
+
+    if (isSingleFrame && frameToUse) {
+      setSelectedFrame(frameToUse);
       setStep('booth_capture');
     } else {
       setStep('frame_select');
