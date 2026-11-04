@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import WelcomeScreen from './components/kiosk/WelcomeScreen';
@@ -10,12 +10,37 @@ import PaymentGateScreen from './components/kiosk/PaymentGateScreen';
 import AdminDashboard from './components/admin/AdminDashboard';
 import { useBooth } from './context/BoothContext';
 import { useAuth } from './context/AuthContext';
+import { useSocket } from './context/SocketContext';
+import { printerService } from './services/printerService';
 
 export default function App() {
   const { eventError, activeEvent, isEventLoading } = useBooth();
   const { isAuthenticated, isRestoring } = useAuth();
+  const { socket } = useSocket() || {};
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+
+  // Global socket listener: Allows remote clients (iPad, Admin browser, etc.) to trigger physical silent prints
+  useEffect(() => {
+    if (!socket) return;
+    const handleRemotePrint = (data) => {
+      if (data && (data.action === 'PRINT' || data.action === 'PRINT_JOB')) {
+        // Only the Electron desktop instance connected to the physical printer executes the print
+        if (printerService.isElectron()) {
+          console.log('🖨️ Electron host executing remote print job:', data);
+          printerService.printPhoto({
+            photoUrl: data.photoUrl,
+            copies: data.copies || 1,
+            source: data.source || 'remote'
+          }).catch((err) => {
+            console.error('Global silent print execution failed:', err);
+          });
+        }
+      }
+    };
+    socket.on('kiosk_action', handleRemotePrint);
+    return () => socket.off('kiosk_action', handleRemotePrint);
+  }, [socket]);
 
   // If the user lands on a specific screen (e.g., /payment) but the event hasn't loaded yet
   if (isEventLoading && !isAdminRoute) {

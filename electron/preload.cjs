@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('printerAPI', {
   previewPattern: (config) => ipcRenderer.invoke('printer:preview-pattern', config),
   getQueue: () => ipcRenderer.invoke('printer:get-queue'),
   retryJob: (jobId) => ipcRenderer.invoke('printer:retry-job', jobId),
+  resumePrinter: (printerName) => ipcRenderer.invoke('printer:resume', printerName),
   onPrintStatus: (callback) => {
     const subscription = (_event, data) => callback(data);
     ipcRenderer.on('printer:status', subscription);

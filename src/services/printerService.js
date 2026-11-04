@@ -185,6 +185,16 @@ export const printerService = {
   },
 
   /**
+   * Clear stuck jobs and unpause/resume the OS printer queue
+   */
+  async resumePrinter(printerName) {
+    if (this.isElectron() && typeof window.printerAPI.resumePrinter === 'function') {
+      return await window.printerAPI.resumePrinter(printerName);
+    }
+    return { success: false, message: 'Printer resume only supported on desktop' };
+  },
+
+  /**
    * Subscribe to real-time print status updates
    */
   onStatusChange(callback) {

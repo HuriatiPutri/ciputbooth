@@ -24,7 +24,8 @@ import {
   Filter,
   FolderOpen,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Modal, Button, Badge } from '../common';

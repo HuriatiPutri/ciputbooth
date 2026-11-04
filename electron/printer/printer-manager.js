@@ -30,9 +30,15 @@ export async function getAvailablePrinters(windowInstance) {
     let statusText = 'Connected';
     let isConnected = true;
 
-    if (p.status === 2 || osInfo.status === 'offline' || osInfo.status === 'stopped') {
-      statusText = 'Offline';
-      isConnected = false;
+    if (p.status === 2 || osInfo.isWorkOffline === true || osInfo.status === 'offline') {
+      // If Chromium native status is 0 (Idle), trust Chromium unless OS explicitly flagged WorkOffline: true
+      if (p.status === 0 && !osInfo.isWorkOffline) {
+        statusText = 'Connected';
+        isConnected = true;
+      } else {
+        statusText = 'Offline';
+        isConnected = false;
+      }
     } else if (p.status === 3 || osInfo.status === 'error') {
       statusText = 'Error';
       isConnected = false;
@@ -40,6 +46,7 @@ export async function getAvailablePrinters(windowInstance) {
       statusText = 'Busy';
     } else {
       statusText = 'Connected';
+      isConnected = true;
     }
 
     return {
@@ -74,6 +81,38 @@ export async function getAvailablePrinters(windowInstance) {
 }
 
 /**
+ * Clear stuck / corrupted print jobs and unpause / re-enable the printer queue
+ */
+export async function resumeAndClearPrinter(printerName) {
+  if (!printerName) return { success: false, message: 'Printer name is required' };
+  const isMac = process.platform === 'darwin';
+  const isLinux = process.platform === 'linux';
+  const isWin = process.platform === 'win32';
+
+  if (isMac || isLinux) {
+    try {
+      await execPromise(`cancel -a "${printerName}" 2>/dev/null || true`);
+      await execPromise(`cupsenable "${printerName}" 2>/dev/null || true`);
+      await execPromise(`cupsaccept "${printerName}" 2>/dev/null || true`);
+      return { success: true, message: `Printer "${printerName}" queue cleared and resumed successfully.` };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  } else if (isWin) {
+    try {
+      const safeName = printerName.replace(/'/g, "''");
+      await execPromise(
+        `powershell -NoProfile -Command "Get-PrintJob -PrinterName '${safeName}' -ErrorAction SilentlyContinue | Remove-PrintJob -ErrorAction SilentlyContinue; Set-Printer -Name '${safeName}' -WorkOffline $false -ErrorAction SilentlyContinue"`
+      );
+      return { success: true, message: `Printer "${printerName}" antrian dibersihkan dan status online diaktifkan.` };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
+  }
+  return { success: false, message: 'Platform not supported' };
+}
+
+/**
  * Query OS-level printer info (macOS/Linux CUPS or Windows spooler)
  */
 async function getOSPrinterDetails() {
@@ -102,16 +141,23 @@ async function getOSPrinterDetails() {
   } else if (isWin) {
     try {
       const { stdout } = await execPromise(
-        'powershell -NoProfile -Command "Get-Printer | Select-Object Name, PrinterStatus, PortName | ConvertTo-Json"'
+        'powershell -NoProfile -Command "Get-Printer | Select-Object Name, PrinterStatus, WorkOffline, PortName | ConvertTo-Json -Compress"'
       );
-      const parsed = JSON.parse(stdout);
-      const list = Array.isArray(parsed) ? parsed : [parsed];
-      for (const p of list) {
-        if (p && p.Name) {
-          result[p.Name] = {
-            status: p.PrinterStatus === 'Normal' ? 'ready' : 'offline',
-            port: p.PortName
-          };
+      if (stdout && stdout.trim()) {
+        const parsed = JSON.parse(stdout.trim());
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        for (const p of list) {
+          if (p && p.Name) {
+            // In Windows PowerShell:
+            // WorkOffline is true when printer is set to offline
+            // PrinterStatus: 7 = Offline, 3 = Normal/Idle, 4 = Printing
+            const isExplicitlyOffline = Boolean(p.WorkOffline) || p.PrinterStatus === 7 || p.PrinterStatus === 'Offline';
+            result[p.Name] = {
+              status: isExplicitlyOffline ? 'offline' : 'ready',
+              isWorkOffline: isExplicitlyOffline,
+              port: p.PortName
+            };
+          }
         }
       }
     } catch (e) {

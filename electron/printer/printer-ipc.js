@@ -124,5 +124,17 @@ export function registerPrinterIPC(mainWindow) {
       return { success: false, error: err.message };
     }
   });
+
+  // Handler: Resume & clear printer queue
+  ipcMain.handle('printer:resume', async (_event, printerName) => {
+    try {
+      const { resumeAndClearPrinter } = await import('./printer-manager.js');
+      const res = await resumeAndClearPrinter(printerName);
+      return res;
+    } catch (err) {
+      console.error('IPC printer:resume error:', err);
+      return { success: false, message: err.message };
+    }
+  });
 }
 

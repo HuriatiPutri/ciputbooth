@@ -3,7 +3,45 @@ import fs from 'fs';
 import path from 'path';
 import { loadPrinterConfig } from './printer-config.js';
 import { printQueue } from './print-queue.js';
-import { getAvailablePrinters } from './printer-manager.js';
+import { getAvailablePrinters, resumeAndClearPrinter } from './printer-manager.js';
+
+/**
+ * Ensures photo is converted to base64 data URL if it is a local file or relative uploads path
+ * so that offscreen print window always loads the image with zero dependency on network origin.
+ */
+function resolvePhotoDataUrl(photoUrl) {
+  if (!photoUrl || typeof photoUrl !== 'string') return '';
+  if (photoUrl.startsWith('data:image/')) return photoUrl;
+
+  try {
+    const rawPath = photoUrl.split('?')[0];
+    if (rawPath.startsWith('/uploads/') || rawPath.startsWith('uploads/')) {
+      const cleanRelative = rawPath.replace(/^\/?uploads\//, '');
+      const candidates = [
+        path.join(process.cwd(), 'server', 'uploads', cleanRelative),
+        path.join(process.cwd(), 'uploads', cleanRelative),
+        path.resolve(process.cwd(), 'dist', 'uploads', cleanRelative)
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          const buf = fs.readFileSync(p);
+          const ext = path.extname(p).toLowerCase();
+          const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+          return `data:${mime};base64,${buf.toString('base64')}`;
+        }
+      }
+    } else if (rawPath.startsWith('/') && fs.existsSync(rawPath)) {
+      const buf = fs.readFileSync(rawPath);
+      const ext = path.extname(rawPath).toLowerCase();
+      const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    }
+  } catch (err) {
+    console.warn('⚠️ Could not read image from local filesystem for printing:', err.message);
+  }
+
+  return photoUrl;
+}
 
 // Paper dimensions mapping in microns (1 inch = 25,400 microns; 1 mm = 1,000 microns)
 export const PAPER_DIMENSIONS = {
@@ -55,7 +93,7 @@ class PrinterService {
   }
 
   /**
-   * Submit a photo print job to the queue and trigger processing.
+   * Submit a photo print job to the queue and execute it.
    */
   async submitJob({ photoUrl, copies, source = 'customer', overrideConfig = {} }) {
     if (!photoUrl) {
@@ -73,12 +111,16 @@ class PrinterService {
       source
     });
 
-    // Asynchronously process the queue
-    this.processQueue().catch((err) => {
-      console.error('Queue processing error:', err);
-    });
-
-    return job;
+    printQueue.updateJob(job.id, { status: 'Printing' });
+    try {
+      await this.executeJob(job);
+      printQueue.updateJob(job.id, { status: 'Completed', error: null });
+      return { success: true, job, message: 'Printed successfully' };
+    } catch (err) {
+      console.error(`Print job ${job.id} failed:`, err);
+      printQueue.updateJob(job.id, { status: 'Failed', error: err.message || 'Printing failed' });
+      throw err;
+    }
   }
 
   /**
@@ -116,12 +158,23 @@ class PrinterService {
 
     // Verify printer availability
     if (config.printerName && !isVirtual) {
-      const match = printers.find(p => p.name === config.printerName || p.displayName === config.printerName);
+      let match = printers.find(p => p.name === config.printerName || p.displayName === config.printerName);
       if (!match) {
         throw new Error(`Configured printer "${config.printerName}" is not detected on this system.`);
       }
       if (!match.isConnected) {
-        throw new Error(`Printer "${config.printerName}" is offline or reports an error.`);
+        console.warn(`⚠️ Printer "${config.printerName}" reports not ready/offline. Attempting queue auto-recovery...`);
+        try {
+          await resumeAndClearPrinter(match.name);
+          const freshPrinters = await getAvailablePrinters();
+          const freshMatch = freshPrinters.find(p => p.name === match.name);
+          if (freshMatch && freshMatch.isConnected) {
+            match = freshMatch;
+            console.log(`✅ Printer "${config.printerName}" queue resumed.`);
+          }
+        } catch (recErr) {
+          console.warn('Could not auto-resume printer queue:', recErr.message);
+        }
       }
     }
 
@@ -134,13 +187,16 @@ class PrinterService {
     const cssW = isLandscape ? paperDim.cssHeight : paperDim.cssWidth;
     const cssH = isLandscape ? paperDim.cssWidth : paperDim.cssHeight;
 
+    const resolvedPhotoUrl = resolvePhotoDataUrl(job.photoUrl);
+
     const printWin = new BrowserWindow({
       show: false,
       width: 1000,
       height: 1400,
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        webSecurity: false
       }
     });
 
@@ -197,7 +253,7 @@ class PrinterService {
           </head>
           <body>
             <div class="print-container">
-              <img id="print-image" src="${job.photoUrl}" alt="Photo" />
+              <img id="print-image" src="${resolvedPhotoUrl}" alt="Photo" />
             </div>
           </body>
         </html>
@@ -209,15 +265,22 @@ class PrinterService {
       await printWin.webContents.executeJavaScript(`
         new Promise((resolve, reject) => {
           const img = document.getElementById('print-image');
-          if (img && img.complete && img.naturalWidth > 0) {
-            resolve(true);
-          } else if (img) {
-            img.onload = () => resolve(true);
-            img.onerror = () => reject(new Error('Image failed to render in hidden window'));
-            setTimeout(() => resolve(true), 4000);
-          } else {
-            resolve(true);
+          if (!img) return reject(new Error('Image element not found in print window'));
+          if (img.complete && img.naturalWidth > 0) {
+            return resolve(true);
           }
+          img.onload = () => {
+            if (img.naturalWidth > 0) resolve(true);
+            else reject(new Error('Photo rendered with 0 dimensions (corrupted data)'));
+          };
+          img.onerror = () => reject(new Error('Photo failed to render in hidden print window'));
+          setTimeout(() => {
+            if (img.complete && img.naturalWidth > 0) {
+              resolve(true);
+            } else {
+              reject(new Error('Photo loading timed out: image is inaccessible or corrupt'));
+            }
+          }, 8000);
         })
       `);
 
@@ -266,13 +329,7 @@ class PrinterService {
         color: config.colorMode !== 'monochrome',
         copies: Math.max(1, Number(job.copies || 1)),
         landscape: isLandscape,
-        margins: {
-          marginType: isBorderless ? 'none' : 'default',
-          top: 0,
-          bottom: 0,
-          left: 0,
-          right: 0
-        },
+        margins: isBorderless ? { marginType: 'none' } : { marginType: 'default' },
         pageSize: {
           width: pageWidthMicrons,
           height: pageHeightMicrons

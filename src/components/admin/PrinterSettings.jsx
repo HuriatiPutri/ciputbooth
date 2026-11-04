@@ -258,6 +258,23 @@ export default function PrinterSettings() {
     }
   };
 
+  const handleResumePrinter = async () => {
+    if (!selectedPrinterInfo?.name) return;
+    setStatusMessage({ type: 'info', text: 'Mereset antrian spooler printer...' });
+    try {
+      const res = await printerService.resumePrinter(selectedPrinterInfo.name);
+      if (res?.success) {
+        setStatusMessage({ type: 'success', text: res.message || 'Antrian printer berhasil dibersihkan dan diaktifkan kembali!' });
+        await loadPrintersAndConfig();
+      } else {
+        setStatusMessage({ type: 'error', text: res?.message || 'Gagal mereset antrian printer' });
+      }
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: 'Error mereset printer: ' + e.message });
+    }
+    setTimeout(() => setStatusMessage(null), 5000);
+  };
+
   const handleTestPrint = async () => {
     setIsTesting(true);
     setStatusMessage(null);
@@ -397,20 +414,34 @@ export default function PrinterSettings() {
                   Default Printer Selection
                 </span>
                 {selectedPrinterInfo && (
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                      selectedPrinterInfo.isConnected
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                    }`}
-                  >
+                  <div className="flex items-center gap-2">
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        selectedPrinterInfo.isConnected ? 'bg-emerald-400' : 'bg-rose-400'
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                        selectedPrinterInfo.isConnected
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       }`}
-                    />
-                    {selectedPrinterInfo.statusText || (selectedPrinterInfo.isConnected ? 'Connected' : 'Disconnected')}
-                  </span>
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          selectedPrinterInfo.isConnected ? 'bg-emerald-400' : 'bg-rose-400'
+                        }`}
+                      />
+                      {selectedPrinterInfo.statusText || (selectedPrinterInfo.isConnected ? 'Connected' : 'Disconnected')}
+                    </span>
+
+                    {!selectedPrinterInfo.isConnected && isDesktop && !selectedPrinterInfo.isVirtual && (
+                      <button
+                        type="button"
+                        onClick={handleResumePrinter}
+                        className="text-[11px] font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                        title="Bersihkan antrian macet dan aktifkan kembali antrian printer"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Resume Queue</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
